@@ -6,6 +6,8 @@ export enum AnalysisStatus {
   ERROR = 'ERROR'
 }
 
+export type Language = 'en' | 'zh';
+
 export interface ChatMetric {
   label: string;
   value: number;
@@ -37,6 +39,7 @@ export interface AnalysisResult {
   sentiment: SentimentData[];
   aiRecommendation: string;
   sources: AnalysisSource[];
+  rawContextSnippet: string;
   interactiveWidgets: {
     type: 'checklist' | 'code-snippet' | 'timeline';
     content: any;
@@ -44,9 +47,9 @@ export interface AnalysisResult {
 }
 
 export interface AppState {
-  url: string;
   content: string;
   status: AnalysisStatus;
   error: string | null;
   result: AnalysisResult | null;
+  language: Language;
 }

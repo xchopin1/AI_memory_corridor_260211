@@ -1,35 +1,31 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { AnalysisResult, AnalysisSource } from "../types";
+import { AnalysisResult, AnalysisSource, Language } from "../types";
 
-export const analyzeChatHistory = async (content: string, url?: string): Promise<AnalysisResult> => {
+export const analyzeChatHistory = async (content: string, language: Language): Promise<AnalysisResult> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  // Construct a prompt that prioritizes content but allows URL grounding
-  let prompt = `Analyze the following chat history.`;
-  if (content && content.trim().length > 0) {
-    prompt += `\n\nChat Content to analyze:\n${content}`;
-  }
-  
-  if (url) {
-    prompt += `\n\nPlease also check the content at this specific URL using your search tools: ${url}`;
-  }
+  const modelName = "gemini-3-pro-preview";
+  const langName = language === 'en' ? 'English' : 'Chinese (Simplified)';
 
-  prompt += `
-    Extract the main theme, metrics, key topics, and sentiment.
-    If the content provided is a URL, use your Google Search tool to find the actual dialogue content.
-    Return the analysis in JSON format based on the defined schema.
-    For interactiveWidgets:
-    - If type is 'checklist', provide 'items' (array of strings).
-    - If type is 'code-snippet', provide 'language' and 'code'.
-    - If type is 'timeline', provide 'events' (array of objects with time, title, and description).
-  `;
+  const prompt = `CRITICAL INSTRUCTION: Analyze the provided conversation history/document content.
+    OUTPUT LANGUAGE: All text fields in the JSON response MUST be in ${langName}.
+    
+    CONTENT TO ANALYZE:
+    ${content}
+
+    STRICT REQUIREMENTS:
+    1. Identify the specific topics, speakers, and intent.
+    2. Provide a 'rawContextSnippet' which is a precise description or 2-sentence quote from the source that defines the core of the discussion.
+    3. Metrics should reflect the density of information or participation.
+    4. interactiveWidgets should be used to provide helpful post-analysis tools like a summary checklist or a timeline of the conversation.
+    
+    Return the analysis in JSON format based on the defined schema. Ensure every string value is in ${langName}.`;
   
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: modelName,
     contents: prompt,
     config: {
-      tools: [{ googleSearch: {} }],
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -40,6 +36,7 @@ export const analyzeChatHistory = async (content: string, url?: string): Promise
             enum: ['technical', 'creative', 'casual', 'educational', 'business']
           },
           summary: { type: Type.STRING },
+          rawContextSnippet: { type: Type.STRING },
           keyTakeaways: { type: Type.ARRAY, items: { type: Type.STRING } },
           metrics: {
             type: Type.ARRAY,
@@ -81,14 +78,12 @@ export const analyzeChatHistory = async (content: string, url?: string): Promise
                 type: { type: Type.STRING, enum: ['checklist', 'code-snippet', 'timeline'] },
                 content: { 
                   type: Type.OBJECT,
-                  description: "Dynamic content based on the widget type.",
                   properties: {
-                    items: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Used for checklist type" },
-                    language: { type: Type.STRING, description: "Used for code-snippet type" },
-                    code: { type: Type.STRING, description: "Used for code-snippet type" },
+                    items: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    language: { type: Type.STRING },
+                    code: { type: Type.STRING },
                     events: {
                       type: Type.ARRAY,
-                      description: "Used for timeline type",
                       items: {
                         type: Type.OBJECT,
                         properties: {
@@ -104,48 +99,15 @@ export const analyzeChatHistory = async (content: string, url?: string): Promise
             }
           }
         },
-        required: ["title", "theme", "summary", "keyTakeaways", "metrics", "topics", "sentiment", "aiRecommendation", "interactiveWidgets"]
+        required: ["title", "theme", "summary", "rawContextSnippet", "keyTakeaways", "metrics", "topics", "sentiment", "aiRecommendation", "interactiveWidgets"]
       }
     }
   });
 
-  if (!response.text) {
-    throw new Error("No response text received from Gemini. Please ensure the content is accessible.");
+  const text = response.text;
+  if (!text) {
+    throw new Error(language === 'en' ? "No response text received." : "未收到响应文本。");
   }
 
-  const parsed = JSON.parse(response.text) as AnalysisResult;
-  
-  // Extract grounding sources from metadata if they exist
-  const sources: AnalysisSource[] = [];
-  const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-  if (groundingChunks) {
-    groundingChunks.forEach((chunk: any) => {
-      if (chunk.web && chunk.web.uri) {
-        sources.push({
-          title: chunk.web.title || "Web Source",
-          uri: chunk.web.uri
-        });
-      }
-    });
-  }
-  
-  // Deduplicate sources
-  parsed.sources = Array.from(new Map(sources.map(item => [item.uri, item])).values());
-
-  return parsed;
-};
-
-export const fetchContentFromUrl = async (url: string): Promise<string> => {
-  const lowerUrl = url.toLowerCase();
-  const isValid = lowerUrl.includes('chatgpt.com') || 
-                  lowerUrl.includes('claude.ai') || 
-                  lowerUrl.includes('gemini.google.com') || 
-                  lowerUrl.includes('openai.com') ||
-                  lowerUrl.includes('google.com/share');
-  
-  if (!isValid) {
-    throw new Error("Please provide a valid AI chat share link.");
-  }
-  
-  return ""; 
+  return JSON.parse(text) as AnalysisResult;
 };
