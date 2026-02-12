@@ -4,8 +4,8 @@ import { AnalysisResult, AnalysisSource, Language } from "../types";
 
 export const analyzeChatHistory = async (content: string, language: Language): Promise<AnalysisResult> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  
-  const modelName = "gemini-3-pro-preview";
+
+  const modelName = "gemini-2.5-flash";
   const langName = language === 'en' ? 'English' : 'Chinese (Simplified)';
 
   const prompt = `CRITICAL INSTRUCTION: Analyze the provided conversation history/document content.
@@ -19,9 +19,10 @@ export const analyzeChatHistory = async (content: string, language: Language): P
     2. Provide a 'rawContextSnippet' which is a precise description or 2-sentence quote from the source that defines the core of the discussion.
     3. Metrics should reflect the density of information or participation.
     4. interactiveWidgets should be used to provide helpful post-analysis tools like a summary checklist or a timeline of the conversation.
+    5. For the 'topics' array: Extract exactly 10 to 20 of the most representative keywords or short phrases from the text. Each topic must have an accurate 'count' reflecting how many times that concept/keyword appears or is referenced in the source content. The topics should cover a wide range — from the most dominant themes to minor but meaningful keywords. Make sure the count values vary significantly so the word cloud has clear visual hierarchy.
     
     Return the analysis in JSON format based on the defined schema. Ensure every string value is in ${langName}.`;
-  
+
   const response = await ai.models.generateContent({
     model: modelName,
     contents: prompt,
@@ -31,8 +32,8 @@ export const analyzeChatHistory = async (content: string, language: Language): P
         type: Type.OBJECT,
         properties: {
           title: { type: Type.STRING },
-          theme: { 
-            type: Type.STRING, 
+          theme: {
+            type: Type.STRING,
             enum: ['technical', 'creative', 'casual', 'educational', 'business']
           },
           summary: { type: Type.STRING },
@@ -76,7 +77,7 @@ export const analyzeChatHistory = async (content: string, language: Language): P
               type: Type.OBJECT,
               properties: {
                 type: { type: Type.STRING, enum: ['checklist', 'code-snippet', 'timeline'] },
-                content: { 
+                content: {
                   type: Type.OBJECT,
                   properties: {
                     items: { type: Type.ARRAY, items: { type: Type.STRING } },

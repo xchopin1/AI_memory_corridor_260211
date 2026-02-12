@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  BarChart2, PieChart as PieIcon, Lightbulb, 
+import {
+  Cloud, PieChart as PieIcon, Lightbulb,
   Loader2, Link2, AlertCircle, Sparkles,
   MessageSquare, Layout, CheckCircle2, Send, Bot, User, Globe, ExternalLink, ShieldCheck, Zap, Languages, Upload, FileText, Trash2
 } from 'lucide-react';
@@ -40,7 +40,7 @@ const TRANSLATIONS = {
     groundingVerified: "Neural Grounding Verified",
     integrity: "Memory Integrity",
     highlights: "Highlights",
-    topicIntensity: "Topic Intensity",
+    topicIntensity: "Topic Cloud",
     groundingEchoes: "Digital Footprints",
     selfContained: "Self-Contained Reality",
     toneSpectrum: "Tone Spectrum",
@@ -81,7 +81,7 @@ const TRANSLATIONS = {
     groundingVerified: "神经锚定已验证",
     integrity: "记忆完整性",
     highlights: "精彩集锦",
-    topicIntensity: "主题强度",
+    topicIntensity: "主题词云",
     groundingEchoes: "数字足迹",
     selfContained: "自洽现实",
     toneSpectrum: "语气光谱",
@@ -113,7 +113,7 @@ const App: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const [chatInput, setChatInput] = useState('');
-  const [chatHistory, setChatHistory] = useState<{role: 'user' | 'ai', text: string}[]>([]);
+  const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'ai', text: string }[]>([]);
   const [isChatting, setIsChatting] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const t = TRANSLATIONS[state.language];
@@ -138,7 +138,7 @@ const App: React.FC = () => {
     const extension = file.name.split('.').pop()?.toLowerCase();
 
     setState(prev => ({ ...prev, status: AnalysisStatus.LOADING, error: null }));
-    
+
     try {
       let extractedText = "";
       if (extension === 'pdf') {
@@ -161,16 +161,16 @@ const App: React.FC = () => {
         throw new Error(t.unsupportedFile);
       }
 
-      setState(prev => ({ 
-        ...prev, 
+      setState(prev => ({
+        ...prev,
         content: prev.content + (prev.content ? "\n\n" : "") + extractedText,
-        status: AnalysisStatus.IDLE 
+        status: AnalysisStatus.IDLE
       }));
     } catch (err: any) {
-      setState(prev => ({ 
-        ...prev, 
-        error: err.message, 
-        status: AnalysisStatus.IDLE 
+      setState(prev => ({
+        ...prev,
+        error: err.message,
+        status: AnalysisStatus.IDLE
       }));
     }
   };
@@ -216,7 +216,7 @@ const App: React.FC = () => {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const chatModel = ai.chats.create({
-        model: 'gemini-3-pro-preview',
+        model: 'gemini-2.5-flash',
         config: {
           systemInstruction: `You are the guardian of the AI Memory Corridor (AI 记忆回廊). You have analyzed a document or chat history. 
           The summary is: ${state.result?.summary}. 
@@ -267,7 +267,7 @@ const App: React.FC = () => {
             </h1>
           </div>
           <nav className="flex items-center gap-4">
-            <button 
+            <button
               onClick={toggleLanguage}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900 border border-white/10 hover:border-indigo-500/50 transition-all text-[10px] font-black uppercase tracking-widest text-indigo-400"
             >
@@ -285,13 +285,13 @@ const App: React.FC = () => {
         {/* Input Section */}
         <section className={`transition-all duration-1000 ease-in-out origin-top ${state.status === AnalysisStatus.SUCCESS ? 'scale-90 opacity-40 h-0 overflow-hidden pointer-events-none' : 'scale-100 opacity-100'}`}>
           <div className="bg-zinc-900/40 rounded-[3rem] p-8 md:p-20 shadow-2xl border border-white/5 backdrop-blur-3xl relative overflow-hidden">
-            
+
             <div className="max-w-3xl mx-auto text-center mb-16 relative z-10">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 text-indigo-400 text-[10px] font-black uppercase tracking-[0.2em] mb-8 border border-indigo-500/20 shadow-sm">
                 <Sparkles className="w-3 h-3" /> {t.grounding}
               </div>
               <h2 className="text-5xl md:text-7xl font-black text-white mb-8 tracking-tighter leading-[0.9]">
-                {t.heroTitle[0]} <br/>
+                {t.heroTitle[0]} <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-violet-400 to-emerald-400">
                   {t.heroTitle[1]}
                 </span>
@@ -303,19 +303,18 @@ const App: React.FC = () => {
 
             <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
               {/* Drop Zone */}
-              <div 
+              <div
                 onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleFileUpload(e.dataTransfer.files); }}
-                className={`relative group h-full min-h-[300px] flex flex-col items-center justify-center border-2 border-dashed rounded-[2.5rem] transition-all duration-500 ${
-                  isDragging 
-                    ? 'border-indigo-500 bg-indigo-500/10 scale-[1.02]' 
-                    : 'border-zinc-800 bg-zinc-950/30 hover:border-zinc-700'
-                }`}
+                className={`relative group h-full min-h-[300px] flex flex-col items-center justify-center border-2 border-dashed rounded-[2.5rem] transition-all duration-500 ${isDragging
+                  ? 'border-indigo-500 bg-indigo-500/10 scale-[1.02]'
+                  : 'border-zinc-800 bg-zinc-950/30 hover:border-zinc-700'
+                  }`}
               >
-                <input 
-                  type="file" 
-                  className="absolute inset-0 opacity-0 cursor-pointer" 
+                <input
+                  type="file"
+                  className="absolute inset-0 opacity-0 cursor-pointer"
                   accept=".pdf,.docx,.txt,.md,.json"
                   onChange={(e) => handleFileUpload(e.target.files)}
                 />
@@ -338,8 +337,8 @@ const App: React.FC = () => {
                     onChange={(e) => setState(prev => ({ ...prev, content: e.target.value }))}
                   />
                   {state.content && (
-                    <button 
-                      onClick={() => setState(prev => ({...prev, content: ''}))}
+                    <button
+                      onClick={() => setState(prev => ({ ...prev, content: '' }))}
                       className="absolute top-6 right-6 p-3 bg-zinc-900/50 hover:bg-rose-500/20 hover:text-rose-500 rounded-2xl transition-all"
                     >
                       <Trash2 className="w-5 h-5" />
@@ -367,7 +366,7 @@ const App: React.FC = () => {
                   </>
                 )}
               </button>
-              
+
               {state.error && (
                 <div className="mt-8 flex items-start gap-4 p-6 bg-rose-500/10 text-rose-400 rounded-3xl border border-rose-500/20 text-sm animate-in fade-in zoom-in duration-300">
                   <AlertCircle className="shrink-0 w-6 h-6" />
@@ -381,7 +380,7 @@ const App: React.FC = () => {
         {/* Results Section */}
         {state.status === AnalysisStatus.SUCCESS && state.result && (
           <div className="animate-in fade-in slide-in-from-bottom-20 duration-1000 flex flex-col gap-12 pb-48">
-            
+
             {/* Context Verification Badge */}
             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-[2.5rem] p-8 text-white shadow-[0_20px_60px_-15px_rgba(99,102,241,0.5)] flex flex-col md:flex-row items-center gap-8 border border-white/20">
               <div className="shrink-0 w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/20">
@@ -403,7 +402,7 @@ const App: React.FC = () => {
             <div className="grid lg:grid-cols-3 gap-10">
               <div className="lg:col-span-2 bg-zinc-900/50 rounded-[3.5rem] p-12 md:p-16 shadow-2xl border border-white/5 backdrop-blur-xl relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-[100px] -mr-32 -mt-32 group-hover:bg-indigo-500/10 transition-colors" />
-                
+
                 <div className="mb-12 relative z-10">
                   <h3 className="text-5xl font-black text-white tracking-tighter leading-none mb-6">
                     {state.result.title}
@@ -414,7 +413,7 @@ const App: React.FC = () => {
                     </span>
                   </div>
                 </div>
-                
+
                 <p className="text-zinc-300 leading-relaxed text-2xl mb-16 font-medium relative z-10">
                   {state.result.summary}
                 </p>
@@ -454,18 +453,18 @@ const App: React.FC = () => {
 
             {/* Visuals Grid */}
             <div className="grid lg:grid-cols-2 gap-12">
-              <div className="bg-zinc-900/50 rounded-[3.5rem] p-12 md:p-16 shadow-2xl border border-white/5 backdrop-blur-xl flex flex-col min-h-[500px]">
-                <div className="flex items-center gap-5 mb-12">
-                  <div className="p-4 bg-indigo-500/10 rounded-2xl border border-indigo-500/20">
-                    <BarChart2 className="w-7 h-7 text-indigo-400" />
-                  </div>
-                  <h4 className="font-black text-white text-2xl tracking-tight uppercase">{t.topicIntensity}</h4>
+              <div className="bg-zinc-900/50 rounded-[3.5rem] shadow-2xl border border-white/5 backdrop-blur-xl flex flex-col min-h-[550px] relative overflow-hidden">
+                {/* Floating title badge */}
+                <div className="absolute top-6 left-8 z-20 flex items-center gap-3 px-4 py-2 bg-zinc-950/70 backdrop-blur-md rounded-2xl border border-white/10">
+                  <Cloud className="w-5 h-5 text-indigo-400" />
+                  <span className="font-black text-white text-sm tracking-tight uppercase">{t.topicIntensity}</span>
                 </div>
-                <div className="flex-1">
+                {/* Word cloud fills entire area */}
+                <div className="flex-1 p-4">
                   <TopicCloud data={state.result.topics} />
                 </div>
               </div>
-              
+
               <div className="flex flex-col gap-12">
                 <div className="bg-zinc-900/50 rounded-[3.5rem] p-12 md:p-16 shadow-2xl border border-white/5 backdrop-blur-xl flex-1">
                   <div className="flex items-center gap-5 mb-12">
@@ -489,9 +488,9 @@ const App: React.FC = () => {
             {/* Interactive Widgets Section */}
             {state.result.interactiveWidgets && state.result.interactiveWidgets.length > 0 && (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                 {state.result.interactiveWidgets.map((widget, i) => (
-                   <InteractiveWidget key={i} type={widget.type} content={widget.content} language={state.language} />
-                 ))}
+                {state.result.interactiveWidgets.map((widget, i) => (
+                  <InteractiveWidget key={i} type={widget.type} content={widget.content} language={state.language} />
+                ))}
               </div>
             )}
 
@@ -527,11 +526,10 @@ const App: React.FC = () => {
                       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${msg.role === 'user' ? 'bg-indigo-600 -rotate-3 border border-indigo-400' : 'bg-white rotate-3 border border-zinc-200'}`}>
                         {msg.role === 'user' ? <User className="w-6 h-6 text-white" /> : <Bot className="w-6 h-6 text-black" />}
                       </div>
-                      <div className={`p-8 rounded-[2.5rem] text-lg leading-relaxed font-bold shadow-xl border ${
-                        msg.role === 'user' 
-                          ? 'bg-indigo-600 text-white rounded-tr-none border-indigo-400' 
-                          : 'bg-zinc-800 text-zinc-100 rounded-tl-none border-zinc-700'
-                      }`}>
+                      <div className={`p-8 rounded-[2.5rem] text-lg leading-relaxed font-bold shadow-xl border ${msg.role === 'user'
+                        ? 'bg-indigo-600 text-white rounded-tr-none border-indigo-400'
+                        : 'bg-zinc-800 text-zinc-100 rounded-tl-none border-zinc-700'
+                        }`}>
                         {msg.text}
                       </div>
                     </div>
