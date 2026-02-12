@@ -1,0 +1,75 @@
+/* aura.css */
+
+.aura-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 30vmax;
+    height: 30vmax;
+    border-radius: 80%;
+    border: 14px solid rgba(167, 139, 250, 0.5);
+    /* Increased thickness by ~3.5x */
+    box-shadow: 0 0 140px rgba(167, 139, 250, 0.4), inset 0 0 140px rgba(167, 139, 250, 0.4);
+    /* Glow */
+    opacity: 0;
+    pointer-events: none;
+    /* Fluid effect: non-standard ring */
+    animation: expand-and-fade linear infinite, fluid-shape 12s ease-in-out infinite alternate;
+}
+
+/* Inner graininess - using a child element for better control */
+.aura-grain {
+    position: absolute;
+    inset: -10px;
+    /* Slight overlap */
+    border-radius: inherit;
+    /* Noise pattern */
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.3'/%3E");
+    mask-image: radial-gradient(circle, transparent 55%, black 75%, transparent 95%);
+    -webkit-mask-image: radial-gradient(circle, transparent 55%, black 75%, transparent 95%);
+    opacity: 0.6;
+    pointer-events: none;
+    mix-blend-mode: overlay;
+}
+
+
+@keyframes expand-and-fade {
+    0% {
+        transform: translate(-50%, -50%) scale(0.1);
+        opacity: 0;
+        border-color: rgba(167, 139, 250, 0.8);
+        /* Brighter start */
+    }
+
+    20% {
+        opacity: 0.8;
+        /* High brightness */
+        border-color: rgba(139, 92, 246, 0.8);
+    }
+
+    100% {
+        transform: translate(-50%, -50%) scale(2.5);
+        /* Spreads beyond page */
+        opacity: 0;
+        border-color: rgba(99, 102, 241, 0);
+    }
+}
+
+@keyframes fluid-shape {
+    0% {
+        border-radius: 50%;
+    }
+
+    33% {
+        border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    }
+
+    66% {
+        border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
+    }
+
+    100% {
+        border-radius: 50%;
+    }
+}

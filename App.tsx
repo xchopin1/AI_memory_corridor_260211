@@ -10,6 +10,7 @@ import { AppState, AnalysisStatus, Language } from './types';
 import { analyzeChatHistory } from './services/geminiService';
 import { TopicCloud, SentimentRing } from './components/Visualization';
 import { InteractiveWidget } from './components/InteractiveWidget';
+import AuraBackground from './components/AuraBackground';
 import mammoth from 'mammoth';
 import * as pdfjsLib from 'pdfjs-dist';
 
@@ -251,10 +252,7 @@ const App: React.FC = () => {
   return (
     <div className={`min-h-screen bg-zinc-950 text-zinc-100 selection:bg-indigo-500/30 flex flex-col items-center font-sans relative overflow-x-hidden ${state.language === 'zh' ? 'tracking-normal' : ''}`}>
       {/* Background FX */}
-      <div className="fixed inset-0 pointer-events-none z-[0] overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-[800px] h-[800px] bg-indigo-500/5 rounded-full blur-[150px] animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-purple-500/5 rounded-full blur-[150px] animate-pulse [animation-delay:2s]" />
-      </div>
+      <AuraBackground />
 
       <header className="w-full bg-zinc-950/80 backdrop-blur-xl border-b border-white/5 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
