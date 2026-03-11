@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Cloud, PieChart as PieIcon, Lightbulb,
   Loader2, Link2, AlertCircle, Sparkles,
-  MessageSquare, Layout, CheckCircle2, Send, Bot, User, Globe, ExternalLink, ShieldCheck, Zap, Languages, Upload, FileText, Trash2
+  MessageSquare, Layout, CheckCircle2, Send, Bot, User, Globe, ExternalLink, ShieldCheck, Zap, Languages, Upload, FileText, Trash2, Settings, LogOut
 } from 'lucide-react';
 
 import { AppState, AnalysisStatus, Language } from './types';
@@ -13,6 +13,7 @@ import { InteractiveWidget } from './components/InteractiveWidget';
 import AuraBackground from './components/AuraBackground';
 import AuthPage from './components/AuthPage';
 import HistoryPage from './components/HistoryPage';
+import AccountSettings from './components/AccountSettings';
 import { useAuth } from './contexts/AuthContext';
 import { saveAnalysis } from './services/historyService';
 import mammoth from 'mammoth';
@@ -63,6 +64,7 @@ const TRANSLATIONS = {
     aiEchoFade: "The echo has faded into silence.",
     aiEchoError: "The corridor resonance is unstable. Please try again.",
     archives: "Archives",
+    settings: "Settings",
     signOut: "Sign Out",
   },
   zh: {
@@ -106,6 +108,7 @@ const TRANSLATIONS = {
     aiEchoFade: "回响已没入沉寂。",
     aiEchoError: "回廊共振不稳定，请重试。",
     archives: "记忆档案",
+    settings: "设置",
     signOut: "登出",
   }
 };
@@ -128,7 +131,19 @@ const App: React.FC = () => {
   const t = TRANSLATIONS[state.language];
 
   const { user, signOut } = useAuth();
-  const [view, setView] = useState<'app' | 'history'>('app');
+  const [view, setView] = useState<'app' | 'history' | 'settings'>('app');
+  const [showUserMenu, setShowUserMenu] = useState(false);
+
+  // Detect recovery mode from URL (user clicked password reset link)
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
+    if (params.get('type') === 'recovery' || hashParams.get('type') === 'recovery') {
+      setIsRecoveryMode(true);
+      setView('settings');
+    }
+  }, []);
 
   useEffect(() => {
     let interval: number;
@@ -272,6 +287,17 @@ const App: React.FC = () => {
     return <AuthPage language={state.language} onToggleLanguage={toggleLanguage} />;
   }
 
+  if (view === 'settings') {
+    return (
+      <AccountSettings
+        language={state.language}
+        onToggleLanguage={toggleLanguage}
+        onBack={() => { setView('app'); setIsRecoveryMode(false); }}
+        isRecoveryMode={isRecoveryMode}
+      />
+    );
+  }
+
   if (view === 'history') {
     return (
       <HistoryPage
@@ -321,10 +347,39 @@ const App: React.FC = () => {
             >
               {t.archives}
             </button>
-            <div className="group relative">
-              <div className="h-9 w-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-xs font-bold shadow-inner cursor-pointer" onClick={signOut}>
+            <div className="relative">
+              <div
+                className="h-9 w-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-xs font-bold shadow-inner cursor-pointer hover:bg-indigo-500/20 transition-all"
+                onClick={() => setShowUserMenu(!showUserMenu)}
+              >
                 {user.email?.charAt(0).toUpperCase() || 'U'}
               </div>
+              {showUserMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
+                  <div className="absolute right-0 top-12 z-50 w-56 bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="px-4 py-3 border-b border-white/5">
+                      <p className="text-xs font-bold text-zinc-500 truncate">{user.email}</p>
+                    </div>
+                    <div className="p-2">
+                      <button
+                        onClick={() => { setView('settings'); setShowUserMenu(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-zinc-300 hover:bg-indigo-500/10 hover:text-indigo-400 transition-all"
+                      >
+                        <Settings className="w-4 h-4" />
+                        {t.settings}
+                      </button>
+                      <button
+                        onClick={() => { signOut(); setShowUserMenu(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-zinc-300 hover:bg-rose-500/10 hover:text-rose-400 transition-all"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        {t.signOut}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </nav>
         </div>
