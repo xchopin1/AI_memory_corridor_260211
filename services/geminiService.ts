@@ -3,7 +3,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult, AnalysisSource, Language } from "../types";
 
 export const analyzeChatHistory = async (content: string, language: Language): Promise<AnalysisResult> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 
   const modelName = "gemini-2.5-flash";
   const langName = language === 'en' ? 'English' : 'Chinese (Simplified)';
