@@ -5,7 +5,7 @@ import {
   Loader2, Link2, AlertCircle, Sparkles,
   MessageSquare, Layout, CheckCircle2, Send, Bot, User, Globe, ExternalLink, ShieldCheck, Zap, Languages, Upload, FileText, Trash2
 } from 'lucide-react';
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+
 import { AppState, AnalysisStatus, Language } from './types';
 import { analyzeChatHistory } from './services/geminiService';
 import { TopicCloud, SentimentRing } from './components/Visualization';
@@ -231,23 +231,26 @@ const App: React.FC = () => {
     setIsChatting(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const chatModel = ai.chats.create({
-        model: 'gemini-2.5-flash',
-        config: {
-          systemInstruction: `You are the guardian of the AI Memory Corridor (AI 记忆回廊). You have analyzed a document or chat history. 
+      const systemInstruction = `You are the guardian of the AI Memory Corridor (AI 记忆回廊). You have analyzed a document or chat history. 
           The summary is: ${state.result?.summary}. 
           The primary context provided was: ${state.content.substring(0, 2000)}...
           Respond in ${state.language === 'en' ? 'English' : 'Chinese (Simplified)'}.
-          Answer questions about this specific conversation in a profound and helpful manner.`,
-        },
+          Answer questions about this specific conversation in a profound and helpful manner.`;
+
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage, systemInstruction }),
       });
 
-      const response: GenerateContentResponse = await chatModel.sendMessage({ message: userMessage });
-      // Fixed property access errors by adding keys to TRANSLATIONS
-      setChatHistory(prev => [...prev, { role: 'ai', text: response.text || t.aiEchoFade }]);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `Server error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setChatHistory(prev => [...prev, { role: 'ai', text: data.text || t.aiEchoFade }]);
     } catch (err) {
-      // Fixed property access errors by adding keys to TRANSLATIONS
       setChatHistory(prev => [...prev, { role: 'ai', text: t.aiEchoError }]);
     } finally {
       setIsChatting(false);
@@ -531,10 +534,10 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {/* Interactive Widgets Section */}
-            {state.result.interactiveWidgets && state.result.interactiveWidgets.length > 0 && (
+            {/* Interactive Widgets Section - filter out code-snippet to prevent sensitive info display */}
+            {state.result.interactiveWidgets && state.result.interactiveWidgets.filter(w => w.type !== 'code-snippet').length > 0 && (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {state.result.interactiveWidgets.map((widget, i) => (
+                {state.result.interactiveWidgets.filter(w => w.type !== 'code-snippet').map((widget, i) => (
                   <InteractiveWidget key={i} type={widget.type} content={widget.content} language={state.language} />
                 ))}
               </div>

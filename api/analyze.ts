@@ -90,7 +90,7 @@ export default async function handler(req: any, res: any) {
               items: {
                 type: "OBJECT",
                 properties: {
-                  type: { type: "STRING", enum: ['checklist', 'code-snippet', 'timeline'] },
+                  type: { type: "STRING", enum: ['checklist', 'timeline'] },
                   content: {
                     type: "OBJECT",
                     properties: {
