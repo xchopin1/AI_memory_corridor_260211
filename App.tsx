@@ -11,6 +11,10 @@ import { analyzeChatHistory } from './services/geminiService';
 import { TopicCloud, SentimentRing } from './components/Visualization';
 import { InteractiveWidget } from './components/InteractiveWidget';
 import AuraBackground from './components/AuraBackground';
+import AuthPage from './components/AuthPage';
+import HistoryPage from './components/HistoryPage';
+import { useAuth } from './contexts/AuthContext';
+import { saveAnalysis } from './services/historyService';
 import mammoth from 'mammoth';
 import * as pdfjsLib from 'pdfjs-dist';
 
@@ -57,7 +61,9 @@ const TRANSLATIONS = {
     unsupportedFile: "Format unsupported in this dimension.",
     // Added missing translation keys for the chatbot
     aiEchoFade: "The echo has faded into silence.",
-    aiEchoError: "The corridor resonance is unstable. Please try again."
+    aiEchoError: "The corridor resonance is unstable. Please try again.",
+    archives: "Archives",
+    signOut: "Sign Out",
   },
   zh: {
     title: "记忆",
@@ -98,7 +104,9 @@ const TRANSLATIONS = {
     unsupportedFile: "此维度不支持该格式。",
     // Added missing translation keys for the chatbot
     aiEchoFade: "回响已没入沉寂。",
-    aiEchoError: "回廊共振不稳定，请重试。"
+    aiEchoError: "回廊共振不稳定，请重试。",
+    archives: "记忆档案",
+    signOut: "登出",
   }
 };
 
@@ -118,6 +126,9 @@ const App: React.FC = () => {
   const [isChatting, setIsChatting] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const t = TRANSLATIONS[state.language];
+
+  const { user, signOut } = useAuth();
+  const [view, setView] = useState<'app' | 'history'>('app');
 
   useEffect(() => {
     let interval: number;
@@ -187,6 +198,11 @@ const App: React.FC = () => {
 
     try {
       const result = await analyzeChatHistory(state.content, state.language);
+
+      if (user) {
+        await saveAnalysis(user.id, state.content, result);
+      }
+
       setState(prev => ({
         ...prev,
         status: AnalysisStatus.SUCCESS,
@@ -249,6 +265,30 @@ const App: React.FC = () => {
     }
   };
 
+  if (!user) {
+    return <AuthPage language={state.language} onToggleLanguage={toggleLanguage} />;
+  }
+
+  if (view === 'history') {
+    return (
+      <HistoryPage
+        language={state.language}
+        onToggleLanguage={toggleLanguage}
+        onBack={() => setView('app')}
+        onViewResult={(result, content) => {
+          setState({
+            content,
+            status: AnalysisStatus.SUCCESS,
+            error: null,
+            result,
+            language: state.language
+          });
+          setView('app');
+        }}
+      />
+    );
+  }
+
   return (
     <div className={`min-h-screen bg-zinc-950 text-zinc-100 selection:bg-indigo-500/30 flex flex-col items-center font-sans relative overflow-x-hidden ${state.language === 'zh' ? 'tracking-normal' : ''}`}>
       {/* Background FX */}
@@ -272,8 +312,16 @@ const App: React.FC = () => {
               <Languages className="w-4 h-4" />
               {state.language === 'en' ? 'EN' : 'ZH'}
             </button>
-            <div className="h-9 w-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-xs font-bold shadow-inner">
-              AI
+            <button
+              onClick={() => setView('history')}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 transition-all text-[10px] font-black uppercase tracking-widest text-indigo-400"
+            >
+              {t.archives}
+            </button>
+            <div className="group relative">
+              <div className="h-9 w-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-xs font-bold shadow-inner cursor-pointer" onClick={signOut}>
+                {user.email?.charAt(0).toUpperCase() || 'U'}
+              </div>
             </div>
           </nav>
         </div>
