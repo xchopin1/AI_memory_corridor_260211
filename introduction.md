@@ -15,10 +15,10 @@ The application is built as a **graduation project** and features a deeply immer
 | **Frontend Framework** | React 19 + TypeScript | Core UI rendering and state management |
 | **Build Tool** | Vite 6 | Fast HMR development server and production bundling |
 | **Styling** | Tailwind CSS (CDN) + Custom CSS | Utility-first responsive styling with custom aura animations |
-| **AI / LLM** | Google Gemini 1.5 Flash (REST API) | Document analysis and conversational follow-up Q&A |
+| **AI / LLM** | Gemini 1.5 Flash, GPT-4o, Deepseek, Kimi, Grok | Multi-provider document analysis and conversational follow-up |
 | **Authentication** | Supabase Auth | Email/password sign-up, sign-in, and password reset |
-| **Database** | Supabase (PostgreSQL + Row-Level Security) | Persistent storage of analysis history per user |
-| **Deployment** | Vercel (Serverless Functions) | Hosting + API routes for secure server-side Gemini calls |
+| **Database** | Supabase (PostgreSQL + RLS) | Persistent storage of analysis history and user AI configurations |
+| **Deployment** | Vercel (Serverless Functions) | Hosting + API routes for secure multi-provider AI calls |
 | **Visualization** | Recharts + d3-cloud | Sentiment pie charts and word cloud topic visualizations |
 | **File Parsing** | pdfjs-dist, mammoth | Client-side extraction of text from PDF and DOCX files |
 | **Icons** | Lucide React | Consistent, modern iconography throughout the UI |
@@ -42,7 +42,8 @@ AI_memory_corridor_260211/
 │   ├── InteractiveWidget.tsx   # Checklist, code-snippet, timeline widgets
 │   └── Visualization.tsx       # Word cloud (TopicCloud) and sentiment ring (SentimentRing)
 ├── contexts/
-│   └── AuthContext.tsx         # React Context provider for Supabase auth state
+│   ├── AuthContext.tsx         # React Context provider for Supabase auth state
+│   └── AIConfigContext.tsx     # React Context for multi-provider AI node settings
 ├── services/
 │   ├── geminiService.ts        # Client-side fetch wrapper for /api/analyze
 │   ├── historyService.ts       # CRUD operations on Supabase `analysis_history` table
@@ -113,24 +114,29 @@ Users can provide content to the system in two ways:
 
 Both methods can be combined — file content is appended to existing text.
 
-### 4.2 AI-Powered Analysis (Gemini 1.5 Flash)
+### 4.2 Multi-Provider AI Analysis
 
-When the user clicks **"Enter the Corridor"** (进入回廊), the content is sent to the Gemini API via a secure server-side endpoint. The AI generates a structured JSON response containing:
+When the user clicks **"Enter the Corridor"** (进入回廊), the content is sent to the selected AI provider (Gemini, OpenAI, Deepseek, Kimi, or Grok) via a secure server-side endpoint.
+
+**Key features include:**
+- **Custom AI Nodes**: Users can deploy their own API keys for various providers.
+- **Connection Testing**: Integrated "Neural Link" testing to verify node connectivity.
+- **System Redundancy**: Automatic fallback to the system-default Gemini (1.5 Flash) if personal nodes fail or are exhausted.
+- **Bilingual Output Generation**: A single AI request now generates parallel **English and Chinese** data objects, allowing for instantaneous language switching without re-analyzing.
+
+The AI generates a structured JSON response containing:
 
 | Field | Description |
 |---|---|
-| `title` | A generated title for the analysis |
-| `theme` | Category classification: `technical`, `creative`, `casual`, `educational`, or `business` |
-| `summary` | A comprehensive text summary of the content |
-| `rawContextSnippet` | A precise 2-sentence quote or description defining the core of the discussion |
-| `keyTakeaways` | An array of key highlights and insights |
-| `metrics` | Quantitative data points (e.g., word count, participation density) with labels and units |
-| `topics` | 10–20 representative keywords/phrases with frequency counts for word cloud visualization |
-| `sentiment` | Sentiment distribution data for ring chart visualization |
-| `aiRecommendation` | AI-generated recommendation or observation |
-| `interactiveWidgets` | Structured widgets: `checklist` (action items), `timeline` (event chronology) |
+| `theme` | Category classification (e.g., `technical`, `creative`, `analytical`) |
+| `en` | Full analysis object in English (title, summary, topics, sentiment, etc.) |
+| `zh` | Full analysis object in Simplified Chinese |
 
-The response schema is enforced via Gemini's `responseSchema` parameter, ensuring consistent structured output.
+The English/Chinese objects contain:
+- `title`, `summary`, `rawContextSnippet`
+- `keyTakeaways`, `metrics`, `topics` (for word cloud)
+- `sentiment` (for ring chart), `aiRecommendation`
+- `interactiveWidgets` (checklist, timeline)
 
 ### 4.3 Interactive Visualizations
 
@@ -199,11 +205,12 @@ The application features a meticulously crafted **cyberpunk / digital consciousn
 | Parameter | Type | Description |
 |---|---|---|
 | `content` | `string` | The text content to analyze |
-| `language` | `'en' \| 'zh'` | Output language for the analysis |
+| `language` | `'en' \| 'zh'` | Output language preference |
+| `userConfig` | `object` | Optional custom node config (provider, apiKey) |
 
-**Returns**: A JSON object conforming to the `AnalysisResult` interface (title, theme, summary, metrics, topics, sentiment, etc.).
+**Returns**: A JSON object containing a global `theme` and two localized analysis objects (`en` and `zh`).
 
-**Security**: The Gemini API key (`GEMINI_API_KEY`) is stored as a server-side environment variable and never exposed to the browser. In local development, a custom Vite plugin (`localApiPlugin`) proxies the same `/api/analyze` endpoint.
+**Security**: AI API keys are either stored as server-side environment variables or provided by the user and transmitted securely via HTTPS. In local development, a custom Vite plugin handles the secure proxying.
 
 ### 5.2 `POST /api/chat` (Vercel Serverless Function)
 

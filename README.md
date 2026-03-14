@@ -18,10 +18,11 @@ Built as a graduation project, it features a deeply immersive, cyberpunk-themed 
 
 ### 2. Feature Highlights
 - **Document Upload & Text Extraction**: Supports `.pdf`, `.docx`, `.txt`, `.md`, and `.json`. In-browser parsing ensures privacy.
-- **AI-Powered Analysis**: Driven by Gemini 1.5 Flash. Structured outputs including summary, key takeaways, metrics, topics, sentiment, and interactive widgets.
-- **Interactive Visualizations**: Topic Word Cloud (with `d3-cloud`), Sentiment Ring Chart (with `Recharts`), and various Widgets (Timeline, Checklist, Code Snippets).
-- **Corridor Guide (Follow-up Q&A)**: Integrated chatbot interface to dive deeper into the analyzed content.
-- **User Authentication & History**: Powered by Supabase. Save, browse, re-enter, and manage your analysis history securely with Row-Level Security.
+- **Multi-Provider AI Analysis**: Driven by Gemini, OpenAI, Deepseek, Kimi, and Grok. Get comprehensive summaries and insights from your preferred model.
+- **Custom AI Nodes**: Securely add and manage your own API keys. Features "Neural Link" connectivity testing and automatic system fallback.
+- **Interactive Visualizations**: Topic Word Cloud (with `d3-cloud`), Sentiment Ring Chart (with `Recharts`), and various Widgets (Timeline, Checklist).
+- **Automated Bilingual Analysis**: Simultaneous English and Chinese result generation for seamless language switching.
+- **User Authentication & History**: Powered by Supabase. Save and manage your analysis history securely with Row-Level Security.
 - **Bilingual & Cyberpunk Design**: Seamless English/Chinese toggling, complete with an animated canvas-based glowing background and glassmorphism UI.
 
 ### 3. Environment Requirements
@@ -80,10 +81,11 @@ This project is licensed under the MIT License.
 
 ### 2. 功能亮点
 - **文档上传与文本提取**：支持 `.pdf`, `.docx`, `.txt`, `.md` 及 `.json` 文件。纯浏览器端解析以保证数据隐私与处理速度。
-- **AI 智能分析**：基于 Gemini 1.5 Flash 驱动。输出结构化分析内容，包括摘要、核心观点、量化指标、主题词云、情感环形图及互动小组件。
-- **动态可视化**：基于 `d3-cloud` 的特定排版主题词云，基于 `Recharts` 的情感甜甜圈环形图，以及时间轴、任务清单和代码片段等互动组件。
-- **回廊向导（追问聊天机器人）**：内置聊天机器人界面，允许用户针对已分析的文档内容进行深度追问与交流。
-- **用户认证与历史记录**：集成 Supabase Auth 和数据库，支持云端保存、浏览、重新读入或删除历史分析记录，并通过行级安全性 (RLS) 保护数据隐私。
+- **多模型 AI 分析**：集成 Gemini, OpenAI, Deepseek, Kimi 及 Grok。支持从您偏好的模型获取深度摘要与洞察。
+- **自定义 AI 节点**：安全地添加和管理您自己的 API 密钥。内置“神经链路”连通性测试以及系统软回退机制。
+- **动态可视化**：基于 `d3-cloud` 的特定排版主题词云，基于 `Recharts` 的情感环形图，以及时间轴、任务清单等互动组件。
+- **全自动化双语分析**：单次请求同步生成中英双语结果，实现无感语言切换。
+- **用户认证与历史记录**：集成 Supabase Auth 和数据库，通过行级安全性 (RLS) 保护您的私有分析历史。
 - **双语支持与赛博朋克设计**：实时中英双语切换。采用定制化 Canvas 动画发光背景和玻璃拟物化暗色 UI 风格。
 
 ### 3. 环境要求
