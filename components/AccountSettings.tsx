@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import {
     Zap, Settings, Mail, Lock, LogOut, AlertCircle, Loader2, CheckCircle2,
-    Languages, ArrowLeft, Eye, EyeOff, KeyRound, Shield, User as UserIcon, Send
+    Languages, ArrowLeft, Eye, EyeOff, KeyRound, Shield, User as UserIcon, Send,
+    Plus, Trash2, Play, ChevronUp, ChevronDown, Check
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { Language } from '../types';
+import { useAIConfig } from '../contexts/AIConfigContext';
+import { Language, AIProvider } from '../types';
 import AuraBackground from './AuraBackground';
 import logoImg from '../picture/logo.jpg';
 
@@ -37,6 +39,26 @@ const SETTINGS_TRANSLATIONS = {
         loggingOut: "Disconnecting...",
         back: "Back",
         recoveryMode: "You arrived via a password reset link. Please set your new password below.",
+        aiConfigSection: "AI Core Configuration",
+        aiConfigDesc: "Customize your personal AI processing nodes and fallback chains.",
+        addKey: "Initialize New Node",
+        keyName: "Node Identifier (e.g. My OpenAI)",
+        keyProvider: "Service Provider",
+        apiKey: "API Access Token",
+        testKey: "Test Link",
+        testing: "Synchronizing...",
+        testSuccess: "Neural link established!",
+        testFail: "Connection timeout/invalid.",
+        activeNode: "Active Node",
+        priority: "Priority",
+        fallbackTitle: "System Redundancy",
+        fallbackDesc: "Automatically reroute to system-default Gemini (1.5 Flash) if all custom nodes fail.",
+        noKeys: "No custom AI nodes deployed.",
+        deleteConfirm: "Decommission this node?",
+        statusTesting: "Syncing...",
+        statusSuccess: "Connection established",
+        statusFailed: "Neural link failed",
+        testBtnTooltip: "Test node connectivity",
     },
     zh: {
         title: "记忆",
@@ -66,6 +88,26 @@ const SETTINGS_TRANSLATIONS = {
         loggingOut: "正在断开连接...",
         back: "返回",
         recoveryMode: "您通过密码重置链接到达此页面。请在下方设置新密码。",
+        aiConfigSection: "AI 核心配置",
+        aiConfigDesc: "自定义您的个人 AI 处理节点和回退链。",
+        addKey: "初始化新节点",
+        keyName: "节点标识 (例如: 我的 OpenAI)",
+        keyProvider: "服务提供商",
+        apiKey: "API 访问令牌",
+        testKey: "测试链接",
+        testing: "正在同步...",
+        testSuccess: "神经链路已建立！",
+        testFail: "连接超时或无效。",
+        activeNode: "活跃节点",
+        priority: "优先级",
+        fallbackTitle: "系统冗余",
+        fallbackDesc: "如果所有自定义节点均失效，自动切换至系统默认的 Gemini (1.5 Flash)。",
+        noKeys: "尚未部署自定义 AI 节点。",
+        deleteConfirm: "停用并移除此节点？",
+        statusTesting: "正在同步...",
+        statusSuccess: "神经链路已建立",
+        statusFailed: "链路连接失败",
+        testBtnTooltip: "测试节点连通性",
     },
 };
 
@@ -93,6 +135,33 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ language, onToggleLan
     const [showNewPassword, setShowNewPassword] = useState(false);
 
     const [logoutLoading, setLogoutLoading] = useState(false);
+
+    // AI Configuration State
+    const { settings, addKey, removeKey, updateKey, setSelectedKey, setFallbackStrategy, testKey, setKeyPriority } = useAIConfig();
+    const [isAddingKey, setIsAddingKey] = useState(false);
+    const [newKey, setNewKey] = useState({ name: '', provider: 'openai' as AIProvider, apiKey: '' });
+    const [testResults, setTestResults] = useState<Record<string, 'loading' | 'success' | 'fail' | null>>({});
+
+    const handleAddKey = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newKey.name || !newKey.apiKey) return;
+        addKey({
+            name: newKey.name,
+            provider: newKey.provider,
+            apiKey: newKey.apiKey,
+        });
+        setNewKey({ name: '', provider: 'openai', apiKey: '' });
+        setIsAddingKey(false);
+    };
+
+    const handleTestKey = async (id: string) => {
+        setTestResults(prev => ({ ...prev, [id]: 'loading' }));
+        const result = await testKey(id);
+        setTestResults(prev => ({ ...prev, [id]: result.success ? 'success' : 'fail' }));
+        setTimeout(() => {
+            setTestResults(prev => ({ ...prev, [id]: null }));
+        }, 3000);
+    };
 
     const handleSendResetEmail = async () => {
         if (!user?.email) return;
@@ -253,6 +322,192 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ language, onToggleLan
                                 <span className="text-zinc-200 font-bold text-base">{formatDate(user?.created_at)}</span>
                             </div>
                         </div>
+                    </div>
+
+                    {/* AI Configuration Section */}
+                    <div className="bg-zinc-900/60 backdrop-blur-2xl rounded-[2rem] p-8 md:p-10 shadow-2xl border border-white/10 relative overflow-hidden">
+                        <div className="absolute -bottom-20 -right-20 w-60 h-60 bg-emerald-500/5 rounded-full blur-[100px]" />
+
+                        <div className="flex items-center justify-between mb-8 relative z-10">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-indigo-500/10 rounded-xl border border-indigo-500/20">
+                                    <Zap className="w-6 h-6 text-indigo-400" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black tracking-tight text-white uppercase">
+                                        {t.aiConfigSection}
+                                    </h3>
+                                    <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mt-1">{t.aiConfigDesc}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Fallback Switch */}
+                        <div className="flex items-center justify-between p-5 bg-zinc-950/50 rounded-2xl border border-white/5 mb-8 relative z-10">
+                            <div className="flex items-center gap-4">
+                                <div className="p-2 bg-indigo-500/10 rounded-lg">
+                                    <Shield className="w-4 h-4 text-indigo-400" />
+                                </div>
+                                <div>
+                                    <div className="text-sm font-black text-white uppercase tracking-tight">{t.fallbackTitle}</div>
+                                    <div className="text-[10px] text-zinc-500 font-medium">{t.fallbackDesc}</div>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setFallbackStrategy(!settings.useDefaultFallback)}
+                                className={`w-12 h-6 rounded-full transition-all relative ${settings.useDefaultFallback ? 'bg-indigo-600' : 'bg-zinc-800'}`}
+                            >
+                                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${settings.useDefaultFallback ? 'left-7' : 'left-1'}`} />
+                            </button>
+                        </div>
+
+                        {/* Keys List */}
+                        <div className="space-y-4 mb-8 relative z-10">
+                            {settings.customKeys.length === 0 && !isAddingKey && (
+                                <div className="text-center py-10 bg-zinc-950/30 rounded-2xl border border-dashed border-white/10">
+                                    <p className="text-zinc-600 text-xs font-black uppercase tracking-widest">{t.noKeys}</p>
+                                </div>
+                            )}
+
+                            {[...settings.customKeys].sort((a,b) => a.priority - b.priority).map((key) => (
+                                <div 
+                                    key={key.id} 
+                                    className={`p-5 rounded-2xl border transition-all ${settings.selectedKeyId === key.id ? 'bg-indigo-500/10 border-indigo-500/40 shadow-[0_0_20px_rgba(99,102,241,0.1)]' : 'bg-zinc-950/50 border-white/5'}`}
+                                >
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter ${
+                                                key.provider === 'openai' ? 'bg-emerald-500/20 text-emerald-400' :
+                                                key.provider === 'gemini' ? 'bg-blue-500/20 text-blue-400' :
+                                                'bg-purple-500/20 text-purple-400'
+                                            }`}>
+                                                {key.provider}
+                                            </div>
+                                            <div className="text-sm font-black text-white">{key.name}</div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex flex-col items-end gap-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-[9px] font-black uppercase tracking-tighter ${
+                                                        testResults[key.id] === 'success' ? 'text-emerald-400' :
+                                                        testResults[key.id] === 'fail' ? 'text-rose-400' :
+                                                        testResults[key.id] === 'loading' ? 'text-indigo-400' :
+                                                        'text-zinc-600'
+                                                    }`}>
+                                                        {testResults[key.id] === 'success' ? t.statusSuccess :
+                                                         testResults[key.id] === 'fail' ? t.statusFailed :
+                                                         testResults[key.id] === 'loading' ? t.statusTesting :
+                                                         t.testBtnTooltip}
+                                                    </span>
+                                                    <button 
+                                                        onClick={() => handleTestKey(key.id)}
+                                                        disabled={testResults[key.id] === 'loading'}
+                                                        title={t.testBtnTooltip}
+                                                        className={`p-2 rounded-lg transition-all ${
+                                                            testResults[key.id] === 'success' ? 'bg-emerald-500/20 text-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.2)]' :
+                                                            testResults[key.id] === 'fail' ? 'bg-rose-500/20 text-rose-400 shadow-[0_0_10px_rgba(251,113,133,0.2)]' :
+                                                            'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
+                                                        }`}
+                                                    >
+                                                        {testResults[key.id] === 'loading' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <button 
+                                                onClick={() => { if(confirm(t.deleteConfirm)) removeKey(key.id); }}
+                                                className="p-2 bg-zinc-800/50 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-4">
+                                        <div className="text-[10px] text-zinc-600 font-mono flex-1 truncate bg-black/40 px-3 py-2.5 rounded-lg border border-white/5">
+                                            {key.apiKey.substring(0, 8)}••••••••{key.apiKey.slice(-4)}
+                                        </div>
+                                        <button 
+                                            onClick={() => setSelectedKey(key.id)}
+                                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                                                settings.selectedKeyId === key.id 
+                                                ? 'bg-indigo-600 text-white shadow-[0_0_15px_rgba(79,70,229,0.4)]' 
+                                                : 'bg-zinc-800 text-zinc-500 hover:bg-zinc-700 hover:text-zinc-300'
+                                            }`}
+                                        >
+                                            {settings.selectedKeyId === key.id ? <CheckCircle2 className="w-3.5 h-3.5" /> : <div className="w-3.5 h-3.5 rounded-full border-2 border-current opacity-30" />}
+                                            {t.activeNode}
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Add Key Form Toggle */}
+                        {!isAddingKey ? (
+                            <button 
+                                onClick={() => setIsAddingKey(true)}
+                                className="w-full py-4 border-2 border-dashed border-white/10 hover:border-indigo-500/40 hover:bg-indigo-500/5 text-zinc-500 hover:text-indigo-400 rounded-2xl flex items-center justify-center gap-3 transition-all font-black text-xs uppercase tracking-widest relative z-10"
+                            >
+                                <Plus className="w-4 h-4" />
+                                {t.addKey}
+                            </button>
+                        ) : (
+                            <form onSubmit={handleAddKey} className="p-6 bg-zinc-950/80 border border-indigo-500/30 rounded-2xl space-y-4 relative z-10 animate-in slide-in-from-top-4 duration-300">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">{t.keyName}</label>
+                                        <input 
+                                            type="text" 
+                                            required
+                                            value={newKey.name}
+                                            onChange={e => setNewKey({...newKey, name: e.target.value})}
+                                            className="w-full px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl focus:border-indigo-500 outline-none text-sm font-bold text-white transition-all"
+                                            placeholder="MemoryNode-01"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">{t.keyProvider}</label>
+                                        <select 
+                                            value={newKey.provider}
+                                            onChange={e => setNewKey({...newKey, provider: e.target.value as AIProvider})}
+                                            className="w-full px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl focus:border-indigo-500 outline-none text-sm font-bold text-white transition-all appearance-none"
+                                        >
+                                            <option value="openai">OpenAI (GPT-4o)</option>
+                                            <option value="gemini">Google Gemini</option>
+                                            <option value="deepseek">Deepseek</option>
+                                            <option value="kimi">Moonshot Kimi</option>
+                                            <option value="grok">xAI Grok</option>
+                                            <option value="claude">Anthropic Claude</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">{t.apiKey}</label>
+                                    <input 
+                                        type="password" 
+                                        required
+                                        value={newKey.apiKey}
+                                        onChange={e => setNewKey({...newKey, apiKey: e.target.value})}
+                                        className="w-full px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl focus:border-indigo-500 outline-none text-sm font-bold text-white transition-all"
+                                        placeholder="sk-••••••••••••••••"
+                                    />
+                                </div>
+                                <div className="flex items-center gap-3 pt-2">
+                                    <button 
+                                        type="submit"
+                                        className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
+                                    >
+                                        {t.addKey}
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        onClick={() => setIsAddingKey(false)}
+                                        className="px-6 py-4 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 font-black text-xs uppercase tracking-widest rounded-xl transition-all active:scale-95"
+                                    >
+                                        {t.back}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
                     </div>
 
                     {/* Change Password Section */}

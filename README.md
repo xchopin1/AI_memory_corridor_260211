@@ -18,7 +18,7 @@ Built as a graduation project, it features a deeply immersive, cyberpunk-themed 
 
 ### 2. Feature Highlights
 - **Document Upload & Text Extraction**: Supports `.pdf`, `.docx`, `.txt`, `.md`, and `.json`. In-browser parsing ensures privacy.
-- **AI-Powered Analysis**: Driven by Gemini 2.5 Flash. Structured outputs including summary, key takeaways, metrics, topics, sentiment, and interactive widgets.
+- **AI-Powered Analysis**: Driven by Gemini 1.5 Flash. Structured outputs including summary, key takeaways, metrics, topics, sentiment, and interactive widgets.
 - **Interactive Visualizations**: Topic Word Cloud (with `d3-cloud`), Sentiment Ring Chart (with `Recharts`), and various Widgets (Timeline, Checklist, Code Snippets).
 - **Corridor Guide (Follow-up Q&A)**: Integrated chatbot interface to dive deeper into the analyzed content.
 - **User Authentication & History**: Powered by Supabase. Save, browse, re-enter, and manage your analysis history securely with Row-Level Security.
@@ -28,7 +28,7 @@ Built as a graduation project, it features a deeply immersive, cyberpunk-themed 
 - **Node.js**: v18 or later
 - **Package Manager**: npm (or yarn / pnpm)
 - **External Services**: 
-  - Google Gemini API Key (Gemini 2.5 Flash)
+  - Google Gemini API Key (Gemini 1.5 Flash)
   - Supabase Project (URL and Anon/Public Key)
 
 ### 4. Installation Steps
@@ -80,7 +80,7 @@ This project is licensed under the MIT License.
 
 ### 2. 功能亮点
 - **文档上传与文本提取**：支持 `.pdf`, `.docx`, `.txt`, `.md` 及 `.json` 文件。纯浏览器端解析以保证数据隐私与处理速度。
-- **AI 智能分析**：基于 Gemini 2.5 Flash 驱动。输出结构化分析内容，包括摘要、核心观点、量化指标、主题词云、情感环形图及互动小组件。
+- **AI 智能分析**：基于 Gemini 1.5 Flash 驱动。输出结构化分析内容，包括摘要、核心观点、量化指标、主题词云、情感环形图及互动小组件。
 - **动态可视化**：基于 `d3-cloud` 的特定排版主题词云，基于 `Recharts` 的情感甜甜圈环形图，以及时间轴、任务清单和代码片段等互动组件。
 - **回廊向导（追问聊天机器人）**：内置聊天机器人界面，允许用户针对已分析的文档内容进行深度追问与交流。
 - **用户认证与历史记录**：集成 Supabase Auth 和数据库，支持云端保存、浏览、重新读入或删除历史分析记录，并通过行级安全性 (RLS) 保护数据隐私。
@@ -90,7 +90,7 @@ This project is licensed under the MIT License.
 - **Node.js**: v18 及以上版本
 - **包管理器**: npm (或 yarn / pnpm)
 - **外部服务依赖**: 
-  - Google Gemini API 密钥 (要求支持 Gemini 2.5 Flash)
+  - Google Gemini API 密钥 (要求支持 Gemini 1.5 Flash)
   - Supabase 项目 (包含 URL 和 anon/public 密钥)
 
 ### 4. 安装步骤

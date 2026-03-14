@@ -117,3 +117,20 @@ export interface AppState {
   result: AnalysisResult | null;
   language: Language;
 }
+
+export type AIProvider = 'gemini' | 'openai' | 'claude' | 'deepseek' | 'kimi' | 'grok';
+
+export interface AIKeyConfig {
+  id: string;
+  name: string;
+  provider: AIProvider;
+  apiKey: string;
+  isActive: boolean;
+  priority: number;
+}
+
+export interface AISettings {
+  customKeys: AIKeyConfig[];
+  useDefaultFallback: boolean;
+  selectedKeyId: string | null; // null means use default
+}

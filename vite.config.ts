@@ -20,7 +20,7 @@ function localApiPlugin(env: Record<string, string>) {
       };
 
       const apiKey = env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY;
-      const modelName = 'gemini-2.5-flash';
+      const modelName = 'gemini-1.5-flash';
 
       // Handle /api/analyze
       server.middlewares.use('/api/analyze', async (req: any, res: any, next: any) => {
@@ -31,10 +31,14 @@ function localApiPlugin(env: Record<string, string>) {
         }
 
         try {
-          const { content, language } = await getBody(req);
-          if (!apiKey) {
+          const { content, language, userConfig } = await getBody(req);
+          
+          let currentApiKey = userConfig?.apiKey || apiKey;
+          let currentProvider = userConfig?.provider || 'gemini';
+
+          if (!currentApiKey) {
             res.statusCode = 500;
-            res.end(JSON.stringify({ error: 'GEMINI_API_KEY is not set' }));
+            res.end(JSON.stringify({ error: 'API Key is not set' }));
             return;
           }
 
@@ -52,71 +56,114 @@ function localApiPlugin(env: Record<string, string>) {
     
     Return the analysis in JSON format based on the defined schema. Ensure 'en' object strings are purely English and 'zh' object strings are purely Chinese.`;
 
-          const requestBody = {
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-              responseMimeType: "application/json",
-              responseSchema: {
-                type: "OBJECT",
-                properties: {
-                  theme: { type: "STRING" },
-                  en: {
-                    type: "OBJECT",
-                    properties: {
-                      title: { type: "STRING" },
-                      summary: { type: "STRING" },
-                      rawContextSnippet: { type: "STRING" },
-                      keyTakeaways: { type: "ARRAY", items: { type: "STRING" } },
-                      metrics: { type: "ARRAY", items: { type: "OBJECT", properties: { label: { type: "STRING" }, value: { type: "NUMBER" }, unit: { type: "STRING" } } } },
-                      topics: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, count: { type: "NUMBER" } } } },
-                      sentiment: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, value: { type: "NUMBER" } } } },
-                      aiRecommendation: { type: "STRING" },
-                      interactiveWidgets: { type: "ARRAY", items: { type: "OBJECT", properties: { type: { type: "STRING" }, content: { type: "OBJECT" } } } }
+          let response;
+          if (currentProvider === 'gemini') {
+            const requestBody = {
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                  type: "OBJECT",
+                  properties: {
+                    theme: { type: "STRING" },
+                    en: {
+                      type: "OBJECT",
+                      properties: {
+                        title: { type: "STRING" },
+                        summary: { type: "STRING" },
+                        rawContextSnippet: { type: "STRING" },
+                        keyTakeaways: { type: "ARRAY", items: { type: "STRING" } },
+                        metrics: { type: "ARRAY", items: { type: "OBJECT", properties: { label: { type: "STRING" }, value: { type: "NUMBER" }, unit: { type: "STRING" } } } },
+                        topics: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, count: { type: "NUMBER" } } } },
+                        sentiment: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, value: { type: "NUMBER" } } } },
+                        aiRecommendation: { type: "STRING" },
+                        interactiveWidgets: { type: "ARRAY", items: { type: "OBJECT", properties: { type: { type: "STRING" }, content: { type: "OBJECT" } } } }
+                      },
+                      required: ["title", "summary", "rawContextSnippet", "keyTakeaways", "metrics", "topics", "sentiment", "aiRecommendation", "interactiveWidgets"]
                     },
-                    required: ["title", "summary", "rawContextSnippet", "keyTakeaways", "metrics", "topics", "sentiment", "aiRecommendation", "interactiveWidgets"]
+                    zh: {
+                      type: "OBJECT",
+                      properties: {
+                        title: { type: "STRING" },
+                        summary: { type: "STRING" },
+                        rawContextSnippet: { type: "STRING" },
+                        keyTakeaways: { type: "ARRAY", items: { type: "STRING" } },
+                        metrics: { type: "ARRAY", items: { type: "OBJECT", properties: { label: { type: "STRING" }, value: { type: "NUMBER" }, unit: { type: "STRING" } } } },
+                        topics: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, count: { type: "NUMBER" } } } },
+                        sentiment: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, value: { type: "NUMBER" } } } },
+                        aiRecommendation: { type: "STRING" },
+                        interactiveWidgets: { type: "ARRAY", items: { type: "OBJECT", properties: { type: { type: "STRING" }, content: { type: "OBJECT" } } } }
+                      },
+                      required: ["title", "summary", "rawContextSnippet", "keyTakeaways", "metrics", "topics", "sentiment", "aiRecommendation", "interactiveWidgets"]
+                    }
                   },
-                  zh: {
-                    type: "OBJECT",
-                    properties: {
-                      title: { type: "STRING" },
-                      summary: { type: "STRING" },
-                      rawContextSnippet: { type: "STRING" },
-                      keyTakeaways: { type: "ARRAY", items: { type: "STRING" } },
-                      metrics: { type: "ARRAY", items: { type: "OBJECT", properties: { label: { type: "STRING" }, value: { type: "NUMBER" }, unit: { type: "STRING" } } } },
-                      topics: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, count: { type: "NUMBER" } } } },
-                      sentiment: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, value: { type: "NUMBER" } } } },
-                      aiRecommendation: { type: "STRING" },
-                      interactiveWidgets: { type: "ARRAY", items: { type: "OBJECT", properties: { type: { type: "STRING" }, content: { type: "OBJECT" } } } }
-                    },
-                    required: ["title", "summary", "rawContextSnippet", "keyTakeaways", "metrics", "topics", "sentiment", "aiRecommendation", "interactiveWidgets"]
-                  }
-                },
-                required: ["theme", "en", "zh"]
+                  required: ["theme", "en", "zh"]
+                }
               }
+            };
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${currentApiKey}`;
+            response = await fetch(apiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(requestBody),
+            });
+          } else {
+            // OpenAI and OpenAI-compatible providers
+            let apiUrl = 'https://api.openai.com/v1/chat/completions';
+            let modelName = 'gpt-4o-mini';
+
+            if (currentProvider === 'deepseek') {
+              apiUrl = 'https://api.deepseek.com/chat/completions';
+              modelName = 'deepseek-chat';
+            } else if (currentProvider === 'kimi') {
+              apiUrl = 'https://api.moonshot.cn/v1/chat/completions';
+              modelName = 'moonshot-v1-8k';
+            } else if (currentProvider === 'grok') {
+              apiUrl = 'https://api.x.ai/v1/chat/completions';
+              modelName = 'grok-beta';
             }
-          };
 
-          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-          const geminiRes = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody),
-          });
+            const requestBody = {
+              model: modelName,
+              messages: [
+                { role: 'system', content: 'You are a helpful AI that analyzes conversations and returns JSON only.' },
+                { role: 'user', content: prompt }
+              ],
+              response_format: { type: "json_object" }
+            };
 
-          if (!geminiRes.ok) {
-            const errorText = await geminiRes.text();
-            res.statusCode = geminiRes.status;
-            res.end(JSON.stringify({ error: `Gemini API error: ${errorText}` }));
+            response = await fetch(apiUrl, {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentApiKey}`
+              },
+              body: JSON.stringify(requestBody),
+            });
+          }
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            res.statusCode = response.status;
+            res.end(JSON.stringify({ error: `${currentProvider} API error: ${errorText}` }));
             return;
           }
 
-          const geminiData = await geminiRes.json();
-          const text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+          const data = await response.json();
+          let text;
+          if (currentProvider === 'gemini') {
+            text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          } else {
+            text = data?.choices?.[0]?.message?.content;
+          }
+
           if (!text) {
             res.statusCode = 500;
-            res.end(JSON.stringify({ error: 'No response text from Gemini.' }));
+            res.end(JSON.stringify({ error: `No response text from ${currentProvider}.` }));
             return;
           }
+
           res.setHeader('Content-Type', 'application/json');
           res.end(text);
         } catch (error: any) {
@@ -134,10 +181,14 @@ function localApiPlugin(env: Record<string, string>) {
         }
 
         try {
-          const { summaries, language } = await getBody(req);
-          if (!apiKey) {
+          const { summaries, language, userConfig } = await getBody(req);
+          
+          let currentApiKey = userConfig?.apiKey || apiKey;
+          let currentProvider = userConfig?.provider || 'gemini';
+
+          if (!currentApiKey) {
             res.statusCode = 500;
-            res.end(JSON.stringify({ error: 'GEMINI_API_KEY is not set' }));
+            res.end(JSON.stringify({ error: 'API Key is not set' }));
             return;
           }
 
@@ -159,64 +210,204 @@ function localApiPlugin(env: Record<string, string>) {
     4. "interactionPatterns": Array of 3-5 strings.
     5. "recommendations": Array of 3-5 recommendations.`;
 
-          const requestBody = {
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-              responseMimeType: "application/json",
-              responseSchema: {
-                type: "OBJECT",
-                properties: {
-                  en: {
-                    type: "OBJECT",
-                    properties: {
-                      overallSummary: { type: "STRING" },
-                      keyInsights: { type: "ARRAY", items: { type: "STRING" } },
-                      topThemes: { type: "ARRAY", items: { type: "OBJECT", properties: { theme: { type: "STRING" }, count: { type: "NUMBER" } } } },
-                      interactionPatterns: { type: "ARRAY", items: { type: "STRING" } },
-                      recommendations: { type: "ARRAY", items: { type: "STRING" } },
+          let response;
+          if (currentProvider === 'gemini') {
+            const requestBody = {
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                  type: "OBJECT",
+                  properties: {
+                    en: {
+                      type: "OBJECT",
+                      properties: {
+                        overallSummary: { type: "STRING" },
+                        keyInsights: { type: "ARRAY", items: { type: "STRING" } },
+                        topThemes: { type: "ARRAY", items: { type: "OBJECT", properties: { theme: { type: "STRING" }, count: { type: "NUMBER" } } } },
+                        interactionPatterns: { type: "ARRAY", items: { type: "STRING" } },
+                        recommendations: { type: "ARRAY", items: { type: "STRING" } },
+                      },
+                      required: ["overallSummary", "keyInsights", "topThemes", "interactionPatterns", "recommendations"]
                     },
-                    required: ["overallSummary", "keyInsights", "topThemes", "interactionPatterns", "recommendations"]
+                    zh: {
+                      type: "OBJECT",
+                      properties: {
+                        overallSummary: { type: "STRING" },
+                        keyInsights: { type: "ARRAY", items: { type: "STRING" } },
+                        topThemes: { type: "ARRAY", items: { type: "OBJECT", properties: { theme: { type: "STRING" }, count: { type: "NUMBER" } } } },
+                        interactionPatterns: { type: "ARRAY", items: { type: "STRING" } },
+                        recommendations: { type: "ARRAY", items: { type: "STRING" } },
+                      },
+                      required: ["overallSummary", "keyInsights", "topThemes", "interactionPatterns", "recommendations"]
+                    }
                   },
-                  zh: {
-                    type: "OBJECT",
-                    properties: {
-                      overallSummary: { type: "STRING" },
-                      keyInsights: { type: "ARRAY", items: { type: "STRING" } },
-                      topThemes: { type: "ARRAY", items: { type: "OBJECT", properties: { theme: { type: "STRING" }, count: { type: "NUMBER" } } } },
-                      interactionPatterns: { type: "ARRAY", items: { type: "STRING" } },
-                      recommendations: { type: "ARRAY", items: { type: "STRING" } },
-                    },
-                    required: ["overallSummary", "keyInsights", "topThemes", "interactionPatterns", "recommendations"]
-                  }
-                },
-                required: ["en", "zh"]
+                  required: ["en", "zh"]
+                }
               }
-            }
-          };
+            };
 
-          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-          const geminiRes = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody),
-          });
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${currentApiKey}`;
+            response = await fetch(apiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(requestBody),
+            });
+          } else {
+             // OpenAI and OpenAI-compatible providers
+             let apiUrl = 'https://api.openai.com/v1/chat/completions';
+             let modelName = 'gpt-4o-mini';
+ 
+             if (currentProvider === 'deepseek') {
+               apiUrl = 'https://api.deepseek.com/chat/completions';
+               modelName = 'deepseek-chat';
+             } else if (currentProvider === 'kimi') {
+               apiUrl = 'https://api.moonshot.cn/v1/chat/completions';
+               modelName = 'moonshot-v1-8k';
+             } else if (currentProvider === 'grok') {
+               apiUrl = 'https://api.x.ai/v1/chat/completions';
+               modelName = 'grok-beta';
+             }
+ 
+             const requestBody = {
+               model: modelName,
+               messages: [
+                 { role: 'system', content: 'You are a helpful AI that analyzes history and returns JSON only.' },
+                 { role: 'user', content: prompt }
+               ],
+               response_format: { type: "json_object" }
+             };
+ 
+             response = await fetch(apiUrl, {
+               method: 'POST',
+               headers: { 
+                 'Content-Type': 'application/json',
+                 'Authorization': `Bearer ${currentApiKey}`
+               },
+               body: JSON.stringify(requestBody),
+             });
+          }
 
-          if (!geminiRes.ok) {
-            const errorText = await geminiRes.text();
-            res.statusCode = geminiRes.status;
-            res.end(JSON.stringify({ error: `Gemini API error: ${errorText}` }));
+          if (!response.ok) {
+            const errorText = await response.text();
+            res.statusCode = response.status;
+            res.end(JSON.stringify({ error: `${currentProvider} API error: ${errorText}` }));
             return;
           }
 
-          const geminiData = await geminiRes.json();
-          const text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+          const data = await response.json();
+          let text;
+          if (currentProvider === 'gemini') {
+            text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          } else {
+            text = data?.choices?.[0]?.message?.content;
+          }
+
           if (!text) {
             res.statusCode = 500;
-            res.end(JSON.stringify({ error: 'No response text from Gemini.' }));
+            res.end(JSON.stringify({ error: `No response text from ${currentProvider}.` }));
             return;
           }
           res.setHeader('Content-Type', 'application/json');
           res.end(text);
+        } catch (error: any) {
+          res.statusCode = 500;
+          res.end(JSON.stringify({ error: error.message || 'Internal server error' }));
+        }
+      });
+
+      // Handle /api/chat
+      server.middlewares.use('/api/chat', async (req: any, res: any, next: any) => {
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          res.end(JSON.stringify({ error: 'Method not allowed' }));
+          return;
+        }
+
+        try {
+          const { message, systemInstruction, userConfig } = await getBody(req);
+          
+          let currentApiKey = userConfig?.apiKey || apiKey;
+          let currentProvider = userConfig?.provider || 'gemini';
+
+          if (!currentApiKey) {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: 'API Key is not set' }));
+            return;
+          }
+
+          let response;
+          if (currentProvider === 'gemini') {
+            const requestBody = {
+              system_instruction: {
+                parts: [{ text: systemInstruction || 'You are a helpful assistant.' }]
+              },
+              contents: [{ parts: [{ text: message }] }],
+            };
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${currentApiKey}`;
+            response = await fetch(apiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(requestBody),
+            });
+          } else {
+            // OpenAI and OpenAI-compatible providers
+            let apiUrl = 'https://api.openai.com/v1/chat/completions';
+            let model = 'gpt-4o-mini';
+
+            if (currentProvider === 'deepseek') {
+              apiUrl = 'https://api.deepseek.com/chat/completions';
+              model = 'deepseek-chat';
+            } else if (currentProvider === 'kimi') {
+              apiUrl = 'https://api.moonshot.cn/v1/chat/completions';
+              model = 'moonshot-v1-8k';
+            } else if (currentProvider === 'grok') {
+              apiUrl = 'https://api.x.ai/v1/chat/completions';
+              model = 'grok-beta';
+            }
+
+            const requestBody = {
+              model: model,
+              messages: [
+                { role: 'system', content: systemInstruction || 'You are a helpful assistant.' },
+                { role: 'user', content: message }
+              ]
+            };
+
+            response = await fetch(apiUrl, {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentApiKey}`
+              },
+              body: JSON.stringify(requestBody),
+            });
+          }
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            res.statusCode = response.status;
+            res.end(JSON.stringify({ error: `${currentProvider} API error: ${errorText}` }));
+            return;
+          }
+
+          const data = await response.json();
+          let text;
+
+          if (currentProvider === 'gemini') {
+            text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          } else {
+            text = data?.choices?.[0]?.message?.content;
+          }
+
+          if (!text) {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: `No response text from ${currentProvider}.` }));
+            return;
+          }
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ text }));
         } catch (error: any) {
           res.statusCode = 500;
           res.end(JSON.stringify({ error: error.message || 'Internal server error' }));

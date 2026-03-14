@@ -1,5 +1,5 @@
 
-import { AnalysisResult, AnalysisSource, Language } from "../types";
+import { AnalysisResult, Language } from "../types";
 
 export interface LocalizedMetaSummaryResult {
   overallSummary: string;
@@ -20,14 +20,20 @@ export interface MetaSummaryResult {
   recommendations?: string[];
 }
 
+export interface AIUserConfig {
+  apiKey: string;
+  provider: string;
+}
+
 export const analyzeHistoryMetaSummary = async (
   summaries: { title: string; theme: string; summary: string }[],
-  language: Language
+  language: Language,
+  userConfig?: AIUserConfig
 ): Promise<MetaSummaryResult> => {
   const response = await fetch('/api/summary', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ summaries, language }),
+    body: JSON.stringify({ summaries, language, userConfig }),
   });
 
   if (!response.ok) {
@@ -39,13 +45,15 @@ export const analyzeHistoryMetaSummary = async (
   return result;
 };
 
-export const analyzeChatHistory = async (content: string, language: Language): Promise<AnalysisResult> => {
-  // Call the serverless API route instead of using the Gemini SDK directly in the browser.
-  // This avoids the "An API Key must be set when running in a browser" error.
+export const analyzeChatHistory = async (
+  content: string, 
+  language: Language,
+  userConfig?: AIUserConfig
+): Promise<AnalysisResult> => {
   const response = await fetch('/api/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content, language }),
+    body: JSON.stringify({ content, language, userConfig }),
   });
 
   if (!response.ok) {
@@ -56,4 +64,3 @@ export const analyzeChatHistory = async (content: string, language: Language): P
   const result: AnalysisResult = await response.json();
   return result;
 };
-

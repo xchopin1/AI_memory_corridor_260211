@@ -6,8 +6,9 @@ import {
   MessageSquare, Layout, CheckCircle2, Send, Bot, User, Globe, ExternalLink, ShieldCheck, Zap, Languages, Upload, FileText, Trash2, Settings, LogOut
 } from 'lucide-react';
 
-import { AppState, AnalysisStatus, Language, THEME_TRANSLATIONS } from './types';
-import { analyzeChatHistory } from './services/geminiService';
+import { AppState, AnalysisStatus, Language, THEME_TRANSLATIONS, AIKeyConfig } from './types';
+import { analyzeChatHistory } from './services/aiService';
+import { useAIConfig } from './contexts/AIConfigContext';
 import { TopicCloud, SentimentRing } from './components/Visualization';
 import { InteractiveWidget } from './components/InteractiveWidget';
 import AuraBackground from './components/AuraBackground';
@@ -210,6 +211,8 @@ const App: React.FC = () => {
     }
   };
 
+  const { settings } = useAIConfig();
+
   const handleAnalyze = async () => {
     if (!state.content.trim()) {
       setState(prev => ({ ...prev, error: t.errorPathway }));
@@ -219,25 +222,57 @@ const App: React.FC = () => {
     setState(prev => ({ ...prev, status: AnalysisStatus.LOADING, error: null, result: null }));
     setChatHistory([]);
 
-    try {
-      const result = await analyzeChatHistory(state.content, state.language);
-
-      if (user) {
-        await saveAnalysis(user.id, state.content, result);
+    // Fallback logic
+    const attemptAnalysis = async (config?: { apiKey: string, provider: string }) => {
+      try {
+        const result = await analyzeChatHistory(state.content, state.language, config);
+        if (user) {
+          await saveAnalysis(user.id, state.content, result);
+        }
+        setState(prev => ({
+          ...prev,
+          status: AnalysisStatus.SUCCESS,
+          result
+        }));
+        return true;
+      } catch (err: any) {
+        console.error('Analysis attempt failed:', err);
+        return false;
       }
+    };
 
-      setState(prev => ({
-        ...prev,
-        status: AnalysisStatus.SUCCESS,
-        result
-      }));
-    } catch (err: any) {
-      setState(prev => ({
-        ...prev,
-        status: AnalysisStatus.ERROR,
-        error: err.message || t.errorBlock
-      }));
+    // 1. Try selected key if any
+    const selectedKey = settings.customKeys.find(k => k.id === settings.selectedKeyId);
+    if (selectedKey && selectedKey.isActive) {
+      const success = await attemptAnalysis({ apiKey: selectedKey.apiKey, provider: selectedKey.provider });
+      if (success) return;
     }
+
+    // 2. Try other active keys in priority order (excluding the one we just tried if it was selectedKey)
+    const otherKeys = settings.customKeys
+      .filter(k => k.isActive && k.id !== settings.selectedKeyId)
+      .sort((a, b) => a.priority - b.priority);
+
+    for (const key of otherKeys) {
+      const success = await attemptAnalysis({ apiKey: key.apiKey, provider: key.provider });
+      if (success) return;
+    }
+
+    // 3. Final fallback to default system key
+    if (settings.useDefaultFallback) {
+      const success = await attemptAnalysis(); // No config means default
+      if (success) {
+        // Optional: Notify user about falling back
+        return;
+      }
+    }
+
+    // If all failed
+    setState(prev => ({
+      ...prev,
+      status: AnalysisStatus.ERROR,
+      error: t.errorBlock
+    }));
   };
 
   const toggleLanguage = () => {
@@ -260,10 +295,18 @@ const App: React.FC = () => {
           Respond in ${state.language === 'en' ? 'English' : 'Chinese (Simplified)'}.
           Answer questions about this specific conversation in a profound and helpful manner.`;
 
+      // Determine active config for chat
+      const selectedKey = settings.customKeys.find(k => k.id === settings.selectedKeyId);
+      const activeKey = (selectedKey && selectedKey.isActive) 
+        ? selectedKey 
+        : settings.customKeys.filter(k => k.isActive).sort((a,b) => a.priority - b.priority)[0];
+      
+      const userConfig = activeKey ? { apiKey: activeKey.apiKey, provider: activeKey.provider } : undefined;
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage, systemInstruction }),
+        body: JSON.stringify({ message: userMessage, systemInstruction, userConfig }),
       });
 
       if (!response.ok) {

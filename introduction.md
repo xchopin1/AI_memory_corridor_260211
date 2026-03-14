@@ -15,7 +15,7 @@ The application is built as a **graduation project** and features a deeply immer
 | **Frontend Framework** | React 19 + TypeScript | Core UI rendering and state management |
 | **Build Tool** | Vite 6 | Fast HMR development server and production bundling |
 | **Styling** | Tailwind CSS (CDN) + Custom CSS | Utility-first responsive styling with custom aura animations |
-| **AI / LLM** | Google Gemini 2.5 Flash (REST API) | Document analysis and conversational follow-up Q&A |
+| **AI / LLM** | Google Gemini 1.5 Flash (REST API) | Document analysis and conversational follow-up Q&A |
 | **Authentication** | Supabase Auth | Email/password sign-up, sign-in, and password reset |
 | **Database** | Supabase (PostgreSQL + Row-Level Security) | Persistent storage of analysis history per user |
 | **Deployment** | Vercel (Serverless Functions) | Hosting + API routes for secure server-side Gemini calls |
@@ -93,7 +93,7 @@ AI_memory_corridor_260211/
                          ▼               ▼
                   ┌──────────────────────────┐
                   │    Google Gemini API      │
-                  │  (gemini-2.5-flash)       │
+                  │  (gemini-1.5-flash)       │
                   └──────────────────────────┘
 ```
 
@@ -113,7 +113,7 @@ Users can provide content to the system in two ways:
 
 Both methods can be combined — file content is appended to existing text.
 
-### 4.2 AI-Powered Analysis (Gemini 2.5 Flash)
+### 4.2 AI-Powered Analysis (Gemini 1.5 Flash)
 
 When the user clicks **"Enter the Corridor"** (进入回廊), the content is sent to the Gemini API via a secure server-side endpoint. The AI generates a structured JSON response containing:
 

@@ -6,46 +6,90 @@ export default async function handler(req: any, res: any) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const { message, systemInstruction, userConfig } = req.body;
+
+  if (!message) {
+    return res.status(400).json({ error: 'Message is required.' });
+  }
+
+  // Determine which API key and provider to use
+  let apiKey = userConfig?.apiKey || process.env.GEMINI_API_KEY;
+  let provider = userConfig?.provider || 'gemini';
+
   if (!apiKey) {
-    return res.status(500).json({ error: 'GEMINI_API_KEY is not configured on the server.' });
+    return res.status(500).json({ error: 'API Key is not configured.' });
   }
 
   try {
-    const { message, systemInstruction } = req.body;
+    let response;
 
-    if (!message) {
-      return res.status(400).json({ error: 'Message is required.' });
+    if (provider === 'gemini') {
+      const modelName = 'gemini-1.5-flash';
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+      
+      const requestBody = {
+        system_instruction: {
+          parts: [{ text: systemInstruction || 'You are a helpful assistant.' }]
+        },
+        contents: [{ parts: [{ text: message }] }],
+      };
+
+      response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
+    } else {
+      // OpenAI and OpenAI-compatible providers
+      let apiUrl = 'https://api.openai.com/v1/chat/completions';
+      let model = 'gpt-4o-mini';
+
+      if (provider === 'deepseek') {
+        apiUrl = 'https://api.deepseek.com/chat/completions';
+        model = 'deepseek-chat';
+      } else if (provider === 'kimi') {
+        apiUrl = 'https://api.moonshot.cn/v1/chat/completions';
+        model = 'moonshot-v1-8k';
+      } else if (provider === 'grok') {
+        apiUrl = 'https://api.x.ai/v1/chat/completions';
+        model = 'grok-beta';
+      }
+
+      const requestBody = {
+        model: model,
+        messages: [
+          { role: 'system', content: systemInstruction || 'You are a helpful assistant.' },
+          { role: 'user', content: message }
+        ]
+      };
+
+      response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify(requestBody),
+      });
     }
 
-    const modelName = 'gemini-2.5-flash';
-
-    const requestBody = {
-      system_instruction: {
-        parts: [{ text: systemInstruction || 'You are a helpful assistant.' }]
-      },
-      contents: [{ parts: [{ text: message }] }],
-    };
-
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-
-    const geminiResponse = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!geminiResponse.ok) {
-      const errorText = await geminiResponse.text();
-      console.error('Gemini Chat API error:', errorText);
-      return res.status(geminiResponse.status).json({ error: `Gemini API error: ${errorText}` });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`${provider} Chat API error:`, errorText);
+      return res.status(response.status).json({ error: `${provider} API error: ${errorText}` });
     }
 
-    const geminiData = await geminiResponse.json();
+    const data = await response.json();
+    let text;
 
-    const text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (provider === 'gemini') {
+      text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    } else {
+      text = data?.choices?.[0]?.message?.content;
+    }
+
     if (!text) {
-      return res.status(500).json({ error: 'No response text from Gemini.' });
+      return res.status(500).json({ error: `No response text from ${provider}.` });
     }
 
     return res.status(200).json({ text });

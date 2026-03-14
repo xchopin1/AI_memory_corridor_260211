@@ -10,7 +10,8 @@ import {
 } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import { getAnalysisHistory, AnalysisRecord } from '../services/historyService';
-import { analyzeHistoryMetaSummary, MetaSummaryResult } from '../services/geminiService';
+import { analyzeHistoryMetaSummary, MetaSummaryResult } from '../services/aiService';
+import { useAIConfig } from '../contexts/AIConfigContext';
 import { Language, TopicData, SentimentData, THEME_TRANSLATIONS } from '../types';
 import { TopicCloud, SentimentRing } from './Visualization';
 import AuraBackground from './AuraBackground';
@@ -196,27 +197,69 @@ const HistorySummaryPage: React.FC<HistorySummaryPageProps> = ({ language, onTog
         return { mostCommonTheme, uniqueThemes, totalTopics };
     }, [themeDistribution, aggregatedTopics]);
 
+    const { settings } = useAIConfig();
+
     // Generate AI summary
     const handleGenerateSummary = async () => {
         if (records.length === 0) return;
         setAiLoading(true);
         setAiError(null);
-        try {
-            const summaries = records.map(r => {
-                const loc = r.full_result?.[language];
-                return {
-                    title: loc?.title || r.title,
-                    theme: r.theme,
-                    summary: loc?.summary || r.summary,
-                };
-            });
-            const result = await analyzeHistoryMetaSummary(summaries, language);
-            setMetaSummary(result);
-        } catch (err: any) {
-            setAiError(err.message || 'Failed to generate summary');
-        } finally {
-            setAiLoading(false);
+
+        const summaries = records.map(r => {
+            const loc = r.full_result?.[language];
+            return {
+                title: loc?.title || r.title,
+                theme: r.theme,
+                summary: loc?.summary || r.summary,
+            };
+        });
+
+        // Fallback logic
+        const attemptMetaSummary = async (config?: { apiKey: string, provider: string }) => {
+            try {
+                const result = await analyzeHistoryMetaSummary(summaries, language, config);
+                setMetaSummary(result);
+                return true;
+            } catch (err: any) {
+                console.error('Meta-summary attempt failed:', err);
+                return false;
+            }
+        };
+
+        // 1. Try selected key
+        const selectedKey = settings.customKeys.find(k => k.id === settings.selectedKeyId);
+        if (selectedKey && selectedKey.isActive) {
+            const success = await attemptMetaSummary({ apiKey: selectedKey.apiKey, provider: selectedKey.provider });
+            if (success) {
+                setAiLoading(false);
+                return;
+            }
         }
+
+        // 2. Try other keys
+        const otherKeys = settings.customKeys
+            .filter(k => k.isActive && k.id !== settings.selectedKeyId)
+            .sort((a, b) => a.priority - b.priority);
+
+        for (const key of otherKeys) {
+            const success = await attemptMetaSummary({ apiKey: key.apiKey, provider: key.provider });
+            if (success) {
+                setAiLoading(false);
+                return;
+            }
+        }
+
+        // 3. Fallback to default
+        if (settings.useDefaultFallback) {
+            const success = await attemptMetaSummary();
+            if (success) {
+                setAiLoading(false);
+                return;
+            }
+        }
+
+        setAiError('All AI providers failed. Reverting to default soon or try again later.');
+        setAiLoading(false);
     };
 
     // Radar data for theme distribution
