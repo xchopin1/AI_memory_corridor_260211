@@ -6,6 +6,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { Language } from '../types';
 import AuraBackground from './AuraBackground';
+import logoImg from '../picture/logo.jpg';
 
 const SETTINGS_TRANSLATIONS = {
     en: {
@@ -170,8 +171,8 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ language, onToggleLan
             <header className="w-full bg-zinc-950/80 backdrop-blur-xl border-b border-white/5 sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-3 group cursor-pointer" onClick={onBack}>
-                        <div className="bg-gradient-to-br from-indigo-600 to-violet-600 p-2 rounded-xl shadow-[0_0_15px_rgba(99,102,241,0.4)] group-hover:scale-110 transition-transform">
-                            <Zap className="text-white w-5 h-5 fill-current" />
+                        <div className="w-9 h-9 rounded-xl overflow-hidden shadow-[0_0_15px_rgba(99,102,241,0.4)] group-hover:scale-110 transition-transform flex items-center justify-center shrink-0">
+                            <img src={logoImg} alt="Logo" className="w-full h-full object-cover" />
                         </div>
                         <h1 className="text-xl font-black tracking-tighter uppercase">
                             {t.title} <span className="text-indigo-400">{t.subtitle}</span>

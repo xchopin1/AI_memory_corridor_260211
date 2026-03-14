@@ -55,9 +55,9 @@ export const saveAnalysis = async (
         .from('analysis_history')
         .insert({
             user_id: userId,
-            title: result.title,
+            title: result.zh?.title || result.en?.title || result.title || 'Untitled',
             theme: result.theme,
-            summary: result.summary,
+            summary: result.zh?.summary || result.en?.summary || result.summary || '',
             content_snippet: originalContent.substring(0, 500),
             full_result: result,
         })

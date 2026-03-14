@@ -6,18 +6,20 @@ import {
   MessageSquare, Layout, CheckCircle2, Send, Bot, User, Globe, ExternalLink, ShieldCheck, Zap, Languages, Upload, FileText, Trash2, Settings, LogOut
 } from 'lucide-react';
 
-import { AppState, AnalysisStatus, Language } from './types';
+import { AppState, AnalysisStatus, Language, THEME_TRANSLATIONS } from './types';
 import { analyzeChatHistory } from './services/geminiService';
 import { TopicCloud, SentimentRing } from './components/Visualization';
 import { InteractiveWidget } from './components/InteractiveWidget';
 import AuraBackground from './components/AuraBackground';
 import AuthPage from './components/AuthPage';
 import HistoryPage from './components/HistoryPage';
+import HistorySummaryPage from './components/HistorySummaryPage';
 import AccountSettings from './components/AccountSettings';
 import { useAuth } from './contexts/AuthContext';
 import { saveAnalysis } from './services/historyService';
 import mammoth from 'mammoth';
 import * as pdfjsLib from 'pdfjs-dist';
+import logoImg from './picture/logo.jpg';
 
 // PDF worker setup
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://esm.sh/pdfjs-dist@4.0.379/build/pdf.worker.mjs`;
@@ -66,6 +68,7 @@ const TRANSLATIONS = {
     archives: "Archives",
     settings: "Settings",
     signOut: "Sign Out",
+    footerLab: "NEURAL INSIGHT LABS.",
   },
   zh: {
     title: "记忆",
@@ -110,6 +113,7 @@ const TRANSLATIONS = {
     archives: "记忆档案",
     settings: "设置",
     signOut: "登出",
+    footerLab: "神经洞察实验室",
   }
 };
 
@@ -129,9 +133,13 @@ const App: React.FC = () => {
   const [isChatting, setIsChatting] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const t = TRANSLATIONS[state.language];
+  
+  const localizedResult = state.result 
+    ? (state.result[state.language] ? { ...state.result, ...state.result[state.language] } : state.result) 
+    : null;
 
   const { user, signOut } = useAuth();
-  const [view, setView] = useState<'app' | 'history' | 'settings'>('app');
+  const [view, setView] = useState<'app' | 'history' | 'settings' | 'historySummary'>('app');
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Detect recovery mode from URL (user clicked password reset link)
@@ -247,7 +255,7 @@ const App: React.FC = () => {
 
     try {
       const systemInstruction = `You are the guardian of the AI Memory Corridor (AI 记忆回廊). You have analyzed a document or chat history. 
-          The summary is: ${state.result?.summary}. 
+          The summary is: ${localizedResult?.summary || state.result?.summary}. 
           The primary context provided was: ${state.content.substring(0, 2000)}...
           Respond in ${state.language === 'en' ? 'English' : 'Chinese (Simplified)'}.
           Answer questions about this specific conversation in a profound and helpful manner.`;
@@ -279,6 +287,19 @@ const App: React.FC = () => {
       case 'casual': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
       case 'educational': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
       case 'business': return 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20';
+      case 'analytical': return 'bg-teal-500/10 text-teal-400 border-teal-500/20';
+      case 'philosophical': return 'bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20';
+      case 'emotional': return 'bg-pink-500/10 text-pink-400 border-pink-500/20';
+      case 'entertainment': return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20';
+      case 'planning': return 'bg-orange-500/10 text-orange-400 border-orange-500/20';
+      case 'coding': return 'bg-sky-500/10 text-sky-400 border-sky-500/20';
+      case 'brainstorming': return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
+      case 'storytelling': return 'bg-violet-500/10 text-violet-400 border-violet-500/20';
+      case 'troubleshooting': return 'bg-red-500/10 text-red-400 border-red-500/20';
+      case 'debate': return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+      case 'advice': return 'bg-lime-500/10 text-lime-400 border-lime-500/20';
+      case 'roleplay': return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
+      case 'productivity': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
       default: return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
     }
   };
@@ -294,6 +315,16 @@ const App: React.FC = () => {
         onToggleLanguage={toggleLanguage}
         onBack={() => { setView('app'); setIsRecoveryMode(false); }}
         isRecoveryMode={isRecoveryMode}
+      />
+    );
+  }
+
+  if (view === 'historySummary') {
+    return (
+      <HistorySummaryPage
+        language={state.language}
+        onToggleLanguage={toggleLanguage}
+        onBack={() => setView('history')}
       />
     );
   }
@@ -314,6 +345,7 @@ const App: React.FC = () => {
           });
           setView('app');
         }}
+        onViewSummary={() => setView('historySummary')}
       />
     );
   }
@@ -326,8 +358,8 @@ const App: React.FC = () => {
       <header className="w-full bg-zinc-950/80 backdrop-blur-xl border-b border-white/5 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3 group cursor-pointer" onClick={() => window.location.reload()}>
-            <div className="bg-gradient-to-br from-indigo-600 to-violet-600 p-2 rounded-xl shadow-[0_0_15px_rgba(99,102,241,0.4)] group-hover:scale-110 transition-transform">
-              <Zap className="text-white w-5 h-5 fill-current" />
+            <div className="w-9 h-9 rounded-xl overflow-hidden shadow-[0_0_15px_rgba(99,102,241,0.4)] group-hover:scale-110 transition-transform flex items-center justify-center shrink-0">
+              <img src={logoImg} alt="Logo" className="w-full h-full object-cover" />
             </div>
             <h1 className="text-xl font-black tracking-tighter uppercase">
               {t.title} <span className="text-indigo-400">{t.subtitle}</span>
@@ -482,7 +514,7 @@ const App: React.FC = () => {
         </section>
 
         {/* Results Section */}
-        {state.status === AnalysisStatus.SUCCESS && state.result && (
+        {state.status === AnalysisStatus.SUCCESS && localizedResult && (
           <div className="animate-in fade-in slide-in-from-bottom-20 duration-1000 flex flex-col gap-12 pb-48">
 
             {/* Context Verification Badge */}
@@ -493,7 +525,7 @@ const App: React.FC = () => {
               <div className="flex-1 text-center md:text-left">
                 <h4 className="text-[10px] font-black uppercase tracking-[0.4em] mb-2 text-indigo-200">{t.groundingVerified}</h4>
                 <p className="text-lg font-bold italic leading-tight">
-                  "{state.result.rawContextSnippet}"
+                  "{localizedResult.rawContextSnippet}"
                 </p>
               </div>
               <div className="hidden md:flex items-center gap-2 bg-black/20 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest backdrop-blur-sm border border-white/10">
@@ -509,21 +541,21 @@ const App: React.FC = () => {
 
                 <div className="mb-12 relative z-10">
                   <h3 className="text-5xl font-black text-white tracking-tighter leading-none mb-6">
-                    {state.result.title}
+                    {localizedResult.title}
                   </h3>
                   <div className="flex items-center gap-4">
-                    <span className={`px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border ${getThemeColor(state.result.theme)} shadow-inner`}>
-                      {state.result.theme}
+                    <span className={`px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border ${getThemeColor(localizedResult.theme)} shadow-inner`}>
+                      {THEME_TRANSLATIONS[state.language][localizedResult.theme] || localizedResult.theme}
                     </span>
                   </div>
                 </div>
 
                 <p className="text-zinc-300 leading-relaxed text-2xl mb-16 font-medium relative z-10">
-                  {state.result.summary}
+                  {localizedResult.summary}
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 relative z-10">
-                  {state.result.metrics.map((m, i) => (
+                  {(localizedResult.metrics || []).map((m, i) => (
                     <div key={i} className="bg-zinc-950/50 p-8 rounded-[2.5rem] border border-white/5 hover:border-indigo-500/30 hover:bg-zinc-900/80 transition-all shadow-sm group/metric">
                       <div className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.3em] mb-4 group-hover/metric:text-indigo-400 transition-colors">{m.label}</div>
                       <div className="text-5xl font-black text-white group-hover/metric:scale-105 transition-transform origin-left">
@@ -543,7 +575,7 @@ const App: React.FC = () => {
                   <h3 className="text-3xl font-black tracking-tighter uppercase leading-none">{t.highlights}</h3>
                 </div>
                 <ul className="space-y-10 relative z-10 flex-1">
-                  {state.result.keyTakeaways.map((item, i) => (
+                  {(localizedResult.keyTakeaways || []).map((item, i) => (
                     <li key={i} className="flex gap-6 text-lg text-zinc-800 leading-snug group/item">
                       <div className="shrink-0 w-10 h-10 rounded-2xl bg-zinc-900 text-white flex items-center justify-center text-sm font-black group-hover/item:bg-indigo-600 transition-all group-hover/item:scale-110">
                         {i + 1}
@@ -565,7 +597,7 @@ const App: React.FC = () => {
                 </div>
                 {/* Word cloud fills entire area */}
                 <div className="flex-1 p-4">
-                  <TopicCloud data={state.result.topics} />
+                  <TopicCloud data={localizedResult.topics || []} />
                 </div>
               </div>
 
@@ -578,21 +610,21 @@ const App: React.FC = () => {
                     <h4 className="font-black text-white text-2xl tracking-tight uppercase">{t.toneSpectrum}</h4>
                   </div>
                   <div className="h-44">
-                    <SentimentRing data={state.result.sentiment} />
+                    <SentimentRing data={localizedResult.sentiment || []} />
                   </div>
                 </div>
 
                 <div className="bg-zinc-900/50 rounded-[3.5rem] p-12 md:p-16 shadow-2xl border border-white/5 backdrop-blur-xl flex-1 flex flex-col items-center justify-center text-center">
                   <Sparkles className="w-10 h-10 text-indigo-400 mb-6" />
-                  <p className="text-zinc-400 font-bold max-w-xs">{state.result.aiRecommendation}</p>
+                  <p className="text-zinc-400 font-bold max-w-xs">{localizedResult.aiRecommendation}</p>
                 </div>
               </div>
             </div>
 
             {/* Interactive Widgets Section - filter out code-snippet to prevent sensitive info display */}
-            {state.result.interactiveWidgets && state.result.interactiveWidgets.filter(w => w.type !== 'code-snippet').length > 0 && (
+            {localizedResult.interactiveWidgets && localizedResult.interactiveWidgets.filter(w => w.type !== 'code-snippet').length > 0 && (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {state.result.interactiveWidgets.filter(w => w.type !== 'code-snippet').map((widget, i) => (
+                {localizedResult.interactiveWidgets.filter(w => w.type !== 'code-snippet').map((widget, i) => (
                   <InteractiveWidget key={i} type={widget.type} content={widget.content} language={state.language} />
                 ))}
               </div>
@@ -685,7 +717,7 @@ const App: React.FC = () => {
           <div className="w-12 h-1 bg-gradient-to-r from-indigo-500 to-purple-500 mx-auto mb-10 rounded-full" />
           <p className="font-black uppercase tracking-[0.6em] mb-8 text-[11px] text-zinc-500">{t.footerSystems}</p>
           <p className="text-[10px] font-black text-zinc-700 tracking-widest uppercase">
-            &copy; {new Date().getFullYear()} NEURAL INSIGHT LABS. {t.footerCopy}
+            &copy; {new Date().getFullYear()} {t.footerLab} {t.footerCopy}
           </p>
         </div>
       </footer>
