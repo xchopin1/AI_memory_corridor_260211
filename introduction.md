@@ -15,11 +15,11 @@ The application is built as a **graduation project** and features a deeply immer
 | **Frontend Framework** | React 19 + TypeScript | Core UI rendering and state management |
 | **Build Tool** | Vite 6 | Fast HMR development server and production bundling |
 | **Styling** | Tailwind CSS (CDN) + Custom CSS | Utility-first responsive styling with custom aura animations |
-| **AI / LLM** | Gemini 1.5 Flash, GPT-4o, Deepseek, Kimi, Grok | Multi-provider document analysis and conversational follow-up |
+| **AI / LLM** | Gemini 1.5 Flash, GPT-4o, Deepseek, Kimi, Grok, Anthropic Claude | Multi-provider document analysis and conversational follow-up |
 | **Authentication** | Supabase Auth | Email/password sign-up, sign-in, and password reset |
 | **Database** | Supabase (PostgreSQL + RLS) | Persistent storage of analysis history and user AI configurations |
 | **Deployment** | Vercel (Serverless Functions) | Hosting + API routes for secure multi-provider AI calls |
-| **Visualization** | Recharts + d3-cloud | Sentiment pie charts and word cloud topic visualizations |
+| **Visualization** | Recharts + d3-cloud | Sentiment pie charts, topic word clouds, theme distribution and radar charts |
 | **File Parsing** | pdfjs-dist, mammoth | Client-side extraction of text from PDF and DOCX files |
 | **Icons** | Lucide React | Consistent, modern iconography throughout the UI |
 
@@ -33,19 +33,21 @@ The application is built as a **graduation project** and features a deeply immer
 AI_memory_corridor_260211/
 ├── api/                        # Vercel Serverless Functions (backend)
 │   ├── analyze.ts              # POST /api/analyze — Gemini document analysis
-│   └── chat.ts                 # POST /api/chat   — Gemini follow-up Q&A
+│   ├── chat.ts                 # POST /api/chat   — Gemini follow-up Q&A
+│   └── summary.ts              # POST /api/summary — Meta-analysis of multiple archives
 ├── components/                 # React UI components
 │   ├── AccountSettings.tsx     # User profile, password reset, sign-out
 │   ├── AuraBackground.tsx      # Canvas-based animated cyberpunk background
 │   ├── AuthPage.tsx            # Login / registration page
 │   ├── HistoryPage.tsx         # Browsing & managing past analyses
+│   ├── HistorySummaryPage.tsx  # Aggregated dashboard and AI meta-summary of archives
 │   ├── InteractiveWidget.tsx   # Checklist, code-snippet, timeline widgets
 │   └── Visualization.tsx       # Word cloud (TopicCloud) and sentiment ring (SentimentRing)
 ├── contexts/
 │   ├── AuthContext.tsx         # React Context provider for Supabase auth state
 │   └── AIConfigContext.tsx     # React Context for multi-provider AI node settings
 ├── services/
-│   ├── geminiService.ts        # Client-side fetch wrapper for /api/analyze
+│   ├── aiService.ts            # Client-side fetch wrapper for /api/analyze and /api/summary
 │   ├── historyService.ts       # CRUD operations on Supabase `analysis_history` table
 │   └── supabaseClient.ts       # Supabase client initialization
 ├── styles/
@@ -64,38 +66,36 @@ AI_memory_corridor_260211/
 ### 3.2 Architecture Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        USER (Browser)                           │
-│                                                                 │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌───────────────┐  │
-│  │ AuthPage │  │  App.tsx  │  │ History  │  │ AccountSettings│  │
-│  │ (Login/  │  │ (Upload, │  │  Page    │  │ (Profile,     │  │
-│  │ Register)│  │ Analyze, │  │ (Browse, │  │ Password      │  │
-│  │          │  │ Results, │  │ Search,  │  │ Reset, Logout)│  │
-│  │          │  │ Chat)    │  │ Delete)  │  │               │  │
-│  └──────────┘  └──────────┘  └──────────┘  └───────────────┘  │
-│         │              │             │               │          │
-│         ▼              ▼             ▼               ▼          │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │              Supabase Client (supabaseClient.ts)        │   │
-│  │     Auth · Database (analysis_history table)            │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                        │                                        │
-└────────────────────────┼────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                                USER (Browser)                                   │
+│                                                                                 │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌───────────────┐  ┌──────────────┐  │
+│  │ AuthPage │  │  App.tsx │  │ History  │  │HistorySummary │  │AccountSetting│  │
+│  │ (Login/  │  │ (Upload/ │  │  Page    │  │Page(Aggregate,│  │(Config, Keys,│  │
+│  │ Register)│  │ Analyze) │  │ (Browse) │  │Meta-Summary)  │  │ Reset, Log)  │  │
+│  └──────────┘  └──────────┘  └──────────┘  └───────────────┘  └──────────────┘  │
+│         │              │             │             │                 │          │
+│         ▼              ▼             ▼             ▼                 ▼          │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │                  Supabase Client (supabaseClient.ts)                    │    │
+│  │               Auth · Database (analysis_history table)                  │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│                        │                                                        │
+└────────────────────────┼────────────────────────────────────────────────────────┘
                          │
-        ┌────────────────┼─────────────────┐
-        ▼                ▼                 ▼
-┌──────────────┐  ┌────────────┐  ┌──────────────┐
-│ Supabase     │  │  Vercel    │  │  Vercel      │
-│ (Auth +      │  │ /api/      │  │ /api/chat    │
-│  PostgreSQL) │  │ analyze    │  │              │
-└──────────────┘  └──────┬─────┘  └──────┬───────┘
-                         │               │
-                         ▼               ▼
-                  ┌──────────────────────────┐
-                  │    Google Gemini API      │
-                  │  (gemini-1.5-flash)       │
-                  └──────────────────────────┘
+        ┌────────────────┼─────────────────┬─────────────────┐
+        ▼                ▼                 ▼                 ▼
+┌──────────────┐  ┌────────────┐  ┌──────────────┐  ┌──────────────┐
+│ Supabase     │  │  Vercel    │  │  Vercel      │  │  Vercel      │
+│ (Auth +      │  │ /api/      │  │ /api/chat    │  │ /api/summary │
+│  PostgreSQL) │  │ analyze    │  │              │  │              │
+└──────────────┘  └──────┬─────┘  └──────┬───────┘  └──────┬───────┘
+                         │               │                 │
+                         ▼               ▼                 ▼
+                  ┌──────────────────────────────────────────┐
+                  │      AI Providers API (Node config)      │
+                  │(Gemini, Deepseek, OpenAI, Kimi, Claude...)│
+                  └──────────────────────────────────────────┘
 ```
 
 ---
@@ -116,7 +116,7 @@ Both methods can be combined — file content is appended to existing text.
 
 ### 4.2 Multi-Provider AI Analysis
 
-When the user clicks **"Enter the Corridor"** (进入回廊), the content is sent to the selected AI provider (Gemini, OpenAI, Deepseek, Kimi, or Grok) via a secure server-side endpoint.
+When the user clicks **"Enter the Corridor"** (进入回廊), the content is sent to the selected AI provider (Gemini, OpenAI, Deepseek, Kimi, Grok, or Claude) via a secure server-side endpoint.
 
 **Key features include:**
 - **Custom AI Nodes**: Users can deploy their own API keys for various providers.
@@ -156,7 +156,7 @@ After analysis, the results are presented through rich, interactive visualizatio
 After an analysis is complete, users can ask follow-up questions about the analyzed content through an integrated chatbot interface. The chatbot:
 
 - Uses the analysis summary and the first 2000 characters of original content as context.
-- Sends queries to `/api/chat` which calls Gemini's `generateContent` API with a system instruction framing the AI as the "guardian of the AI Memory Corridor."
+- Sends queries to `/api/chat` which calls the selected AI provider's API with a system instruction framing the AI as the "guardian of the AI Memory Corridor."
 - Provides a real-time chat experience with user/AI message bubbles, typing indicators, and smooth scroll.
 
 ### 4.5 User Authentication
@@ -181,15 +181,21 @@ Authenticated users' analyses are automatically persisted to a Supabase `analysi
 
 The database uses **Row-Level Security (RLS)** policies to ensure users can only access their own data.
 
-### 4.7 Bilingual Support (i18n)
+### 4.7 Meta-Analysis / History Summary
+
+Users can navigate to a Historical Summary page to view an aggregated dashboard for all preserved conversational archives.
+- **Aggregated Dashboards**: Visualizes comprehensive theme distribution (Pie/Bar charts), an aggregated overall topic cloud, and overall sentiment distribution combining past data.
+- **AI Meta-Summary**: Passes concatenated synopses to `/api/summary` to extract high-level interaction patterns, cross-archive insights, and actionable recommendations using the selected AI provider.
+
+### 4.8 Bilingual Support (i18n)
 
 The entire application supports **English** and **Simplified Chinese** (中文简体). A language toggle is available in the header across all pages. Translation objects (`TRANSLATIONS`, `AUTH_TRANSLATIONS`, `HISTORY_TRANSLATIONS`, `SETTINGS_TRANSLATIONS`) provide localized strings for all UI elements. The AI analysis output language also switches based on the selected language.
 
-### 4.8 Cyberpunk Visual Design
+### 4.9 Cyberpunk Visual Design
 
 The application features a meticulously crafted **cyberpunk / digital consciousness** aesthetic:
 
-- **AuraBackground**: A canvas-based animated background rendering expanding halo rings with organic wave deformations, conic gradient colors (Cyan, Neon Purple, Deep Blue, Cyber Pink), and additive screen blending for a glowing effect. Rings spawn periodically, fade in/out, and expand across the viewport.
+- **AuraBackground**: A canvas-based animated background rendering expanding halo rings with organic wave deformations, conic gradient colors (Cyan, Neon Purple, Deep Blue, Cyber Pink), and additive screen blending for a glowing effect.
 - **Custom CSS Animations**: `aura.css` defines `expand-and-fade` and `fluid-shape` keyframe animations for organic morphing ring effects.
 - **Dark Theme**: Base `bg-zinc-950` with glassmorphism effects (`backdrop-blur`, translucent backgrounds), neon accent colors (indigo, violet, emerald), and deep shadows.
 - **Rounded Design Language**: Cards use extreme border-radius values (`rounded-[3rem]`, `rounded-[3.5rem]`), creating a soft, futuristic look.
@@ -200,7 +206,7 @@ The application features a meticulously crafted **cyberpunk / digital consciousn
 
 ### 5.1 `POST /api/analyze` (Vercel Serverless Function)
 
-**Purpose**: Analyzes uploaded document/chat content using Gemini AI.
+**Purpose**: Analyzes uploaded document/chat content using multi-provider AI.
 
 | Parameter | Type | Description |
 |---|---|---|
@@ -210,18 +216,29 @@ The application features a meticulously crafted **cyberpunk / digital consciousn
 
 **Returns**: A JSON object containing a global `theme` and two localized analysis objects (`en` and `zh`).
 
-**Security**: AI API keys are either stored as server-side environment variables or provided by the user and transmitted securely via HTTPS. In local development, a custom Vite plugin handles the secure proxying.
-
 ### 5.2 `POST /api/chat` (Vercel Serverless Function)
 
-**Purpose**: Handles follow-up Q&A about analyzed content.
+**Purpose**: Handles follow-up Q&A about analyzed content using multi-provider AI.
 
 | Parameter | Type | Description |
 |---|---|---|
 | `message` | `string` | The user's question |
 | `systemInstruction` | `string` | Context instruction for the AI (includes summary + source content) |
+| `userConfig` | `object` | Optional custom node config (provider, apiKey) |
 
 **Returns**: `{ text: string }` — the AI's response.
+
+### 5.3 `POST /api/summary` (Vercel Serverless Function)
+
+**Purpose**: Performs a meta-analysis across multiple past analysis archives using multi-provider AI.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `summaries` | `array` | Array of archive objects (title, theme, summary) |
+| `language` | `'en' \| 'zh'` | Output language preference |
+| `userConfig` | `object` | Optional custom node config (provider, apiKey) |
+
+**Returns**: A JSON object containing `overallSummary`, `keyInsights`, `topThemes`, `interactionPatterns`, and `recommendations` in both languages.
 
 ---
 
@@ -250,13 +267,15 @@ The `types.ts` file defines the core data structures used throughout the applica
 
 ```typescript
 AnalysisStatus  // Enum: IDLE, LOADING, SUCCESS, ERROR
-Language         // Type: 'en' | 'zh'
-ChatMetric       // { label, value, unit }
-TopicData        // { name, count }
-SentimentData    // { name, value }
-AnalysisSource   // { title, uri }
-AnalysisResult   // Full analysis result (title, theme, summary, metrics, topics, etc.)
-AppState         // Application state (content, status, error, result, language)
+Language        // Type: 'en' | 'zh'
+ChatMetric      // { label, value, unit }
+TopicData       // { name, count }
+SentimentData   // { name, value }
+AnalysisSource  // { title, uri }
+AnalysisResult  // Full analysis result (title, theme, summary, metrics, topics, etc.)
+AppState        // Application state (content, status, error, result, language)
+AIProvider      // Supported API providers: 'gemini' | 'openai' | 'claude' | 'deepseek' | 'kimi' | 'grok'
+AIKeyConfig     // AI Custom Keys configuration (name, provider, priority, etc.)
 ```
 
 ---
@@ -264,7 +283,7 @@ AppState         // Application state (content, status, error, result, language)
 ## 8. Key Design Decisions
 
 ### 8.1 Server-Side API Key Management
-The Gemini API key is **never sent to the browser**. Both analysis and chat requests are proxied through Vercel Serverless Functions (or a local Vite middleware in development), which inject the API key server-side. This prevents the `"An API Key must be set when running in a browser"` error and protects the key from exposure.
+The AI API keys are **never sent directly to the browser component logic**, unless custom ones are provided by users via Context. Analysis and chat requests are proxied through Vercel Serverless Functions (or a local Vite middleware in development), which securely handle requests and inject server-default keys if needed.
 
 ### 8.2 Client-Side File Parsing
 PDF and DOCX file parsing is performed **entirely in the browser** using `pdfjs-dist` and `mammoth`. This design:
@@ -276,7 +295,7 @@ PDF and DOCX file parsing is performed **entirely in the browser** using `pdfjs-
 The `TopicCloud` component uses a **seeded pseudo-random number generator** (`seededRandom(42)`) with `d3-cloud` to produce consistent, deterministic word cloud layouts. This means the same data will always render the same visual arrangement, avoiding jarring layout shifts on re-renders.
 
 ### 8.4 Dual Development/Production API Strategy
-- **Local Development**: A custom Vite plugin (`localApiPlugin` in `vite.config.ts`) intercepts `/api/analyze` requests and calls the Gemini API directly, mirroring the production API logic.
+- **Local Development**: A custom Vite plugin (`localApiPlugin` in `vite.config.ts`) intercepts `/api/*` requests and calls specific API providers seamlessly in development.
 - **Production (Vercel)**: The `api/` directory is automatically deployed as Vercel Serverless Functions. `vercel.json` rewrites ensure `/api/*` routes hit these functions while all other routes serve the SPA.
 
 ---
@@ -285,7 +304,7 @@ The `TopicCloud` component uses a **seeded pseudo-random number generator** (`se
 
 | Variable | Location | Purpose |
 |---|---|---|
-| `GEMINI_API_KEY` | Server-side (`.env.local` / Vercel env) | API key for Google Gemini API |
+| `GEMINI_API_KEY` | Server-side (`.env.local` / Vercel env) | System default API key for Google Gemini API |
 | `VITE_SUPABASE_URL` | Client-side (`.env.local`) | Supabase project URL |
 | `VITE_SUPABASE_ANON_KEY` | Client-side (`.env.local`) | Supabase anonymous/public key |
 
@@ -327,17 +346,19 @@ npm run preview  # Preview the production build locally
 
 | Component | File | Description |
 |---|---|---|
-| `App` | `App.tsx` | Root component — handles view routing (app/history/settings), file upload, analysis trigger, results display, chatbot, and language toggle |
+| `App` | `App.tsx` | Root component — handles view routing (app/history/settings/summary), file upload, analysis trigger, results display, chatbot, and language toggle |
 | `AuthPage` | `components/AuthPage.tsx` | Login and registration forms with validation, error/success feedback, and password visibility toggle |
-| `AccountSettings` | `components/AccountSettings.tsx` | User profile display, email-based password reset, direct password update (recovery mode), and sign-out |
+| `AccountSettings` | `components/AccountSettings.tsx` | Profile, password reset, recovery mode, sign-out, & custom AI API Keys management |
 | `HistoryPage` | `components/HistoryPage.tsx` | Paginated list of past analyses with search, theme badges, timestamps, re-entry, and deletion |
+| `HistorySummaryPage` | `components/HistorySummaryPage.tsx` | Dashboard displaying aggregated theme distributions, topic clouds, and cross-archive AI meta-summaries |
 | `AuraBackground` | `components/AuraBackground.tsx` | Full-screen canvas-rendered animated background with cyberpunk neon ring effects |
 | `Visualization` | `components/Visualization.tsx` | `TopicCloud` (d3-cloud word cloud) and `SentimentRing` (Recharts donut chart) |
 | `InteractiveWidget` | `components/InteractiveWidget.tsx` | Renders checklist, code-snippet, or timeline widgets based on AI analysis output |
 | `AuthProvider` | `contexts/AuthContext.tsx` | React Context wrapping the app with Supabase auth state and action methods |
+| `AIConfigProvider` | `contexts/AIConfigContext.tsx` | React Context for maintaining user-supplied multi-provider AI node settings |
 
 ---
 
 ## 12. Summary
 
-**AI Memory Corridor** transforms raw conversational and document data into structured, visually rich insights using the power of Google Gemini AI. It combines a stunning cyberpunk aesthetic with practical NLP analysis features — including topic extraction, sentiment analysis, interactive widgets, and conversational follow-up — all wrapped in a secure, authenticated, bilingual web application deployed on modern cloud infrastructure (Vercel + Supabase).
+**AI Memory Corridor** transforms raw conversational and document data into structured, visually rich insights using the power of multi-provider LLMs. It combines a stunning cyberpunk aesthetic with practical NLP analysis features — including topic extraction, sentiment distribution, meta-analysis dashboards, interactive widgets, and conversational follow-up — all wrapped in a secure, authenticated, bilingual web application deployed on modern cloud infrastructure (Vercel + Supabase).
